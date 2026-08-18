@@ -233,7 +233,7 @@ const DGM_ORGS = {
     { match:["shirt","tee","t-shirt"], payout:10 },
   ]},
   "HONK! Festival":{ type:"fixed", rules:[
-    { match:["shirt","tee","t-shirt"], payout:10 },
+    { match:["shirt","tee","t-shirt"], payout:5 },
   ]},
   "Tibet Action":{ type:"fixed", rules:[
     { match:["shirt","tee","t-shirt"], payout:10 },
@@ -271,6 +271,8 @@ const VENDOR_CANON = {
   "gacadp":"Georgia Catholics Against the Death Penalty",
   "artifactor":"Artifactor",
   "minimum wage art":"Minimum Wage Art",
+  "honk!":"HONK! Festival",
+  "honk":"HONK! Festival",
   "honk! festival":"HONK! Festival",
   "honk festival":"HONK! Festival",
   "tibet action":"Tibet Action",
@@ -286,6 +288,7 @@ const TITLE_MAP = [
   ["catholics for abolition","Catholics For Abolition in North Carolina"],
   ["ukraine","Aid for the Ukrainian People"],
   ["vostok","Aid for the Ukrainian People"],
+  ["execute justice","Abolition Wear"],
   ["abolition wear","Abolition Wear"],
   ["national lawyers guild","National Lawyers Guild Detroit & Michigan Chapter"],
   ["artifactor","Artifactor"],
@@ -329,7 +332,27 @@ const MG_MERCH_RULES = [
   { match:["face mask","mask"],  payout:0 },
 ];
 
-// ── HELPERS ───────────────────────────────────────────────────────────────────
+// ── ROW NORMALIZER (handles both old aggregated and new per-order formats) ────
+function extractRow(raw) {
+  const row = norm(raw);
+  const isNew = row['is discounted sale'] !== undefined;
+  const isDiscounted = isNew && gf(row,'is discounted sale').toLowerCase().trim() === 'true';
+  const gross = pn(gf(row,'gross sales'));
+  const qty = isNew ? 1 : (pn(gf(row,'net quantity','net items sold','quantity sold','quantity','qty')) || 1);
+  const netSales = isNew
+    ? (isDiscounted ? 0 : gross)
+    : pn(gf(row,'net sales','net revenue','subtotal'));
+  return {
+    title:       gf(row,'product title','product title at time of sale','product','title'),
+    productType: gf(row,'product type','type'),
+    vendor:      gf(row,'product vendor','vendor'),
+    variant:     gf(row,'product variant title','variant title','variant'),
+    discountCode:gf(row,'discount title','discount code','coupon code'),
+    qty, netSales, grossSales:gross, isDiscounted,
+  };
+}
+
+
 function norm(row){const o={};Object.entries(row).forEach(([k,v])=>{o[k.trim().toLowerCase()]=(v||"").trim();});return o;}
 function gf(row,...keys){for(const k of keys)if(row[k]!==undefined&&row[k]!=="")return row[k];return "";}
 function pn(s){return parseFloat(String(s||"").replace(/[^0-9.\-]/g,""))||0;}
@@ -343,12 +366,10 @@ function vendorFromTitle(title){const t=title.toLowerCase();for(const[kw,org]of 
 function detectStore(rows){
   const keys=new Set();
   for(const raw of rows){
-    const row=norm(raw);
-    const vendor=gf(row,"product vendor","vendor").toLowerCase().trim();
-    const title=gf(row,"product title","product","title").toLowerCase().trim();
-    // Try vendor map first
+    const r=extractRow(raw);
+    const vendor=r.vendor.toLowerCase().trim();
+    const title=r.title.toLowerCase().trim();
     if(vendor && STORE_VENDOR_MAP[vendor]){ keys.add(STORE_VENDOR_MAP[vendor]); continue; }
-    // Fallback: title hints
     let found=false;
     for(const[key,hints] of Object.entries(STORE_TITLE_HINTS)){
       if(hints.some(h=>title.includes(h.toLowerCase()))){keys.add(key);found=true;break;}
@@ -368,13 +389,10 @@ function processFarmAid(rows){
   let netSales=0,totalOrders=0;
   const products=[];
   for(const raw of rows){
-    const row=norm(raw);
-    const title=gf(row,"product title","product","title");
-    if(!title) continue;
-    const ns=pn(gf(row,"net sales","subtotal"));
-    const qty=pn(gf(row,"net items sold","net quantity","quantity sold","quantity"));
-    netSales+=ns; totalOrders+=qty;
-    if(ns>0) products.push({title,netSales:ns,qty});
+    const r=extractRow(raw);
+    if(!r.title) continue;
+    netSales+=r.netSales; totalOrders+=r.qty;
+    if(r.netSales>0) products.push({title:r.title,netSales:r.netSales,qty:r.qty});
   }
   const avgOrderValue=totalOrders>0?netSales/totalOrders:0;
   const top5=products.sort((a,b)=>b.netSales-a.netSales).slice(0,5);
@@ -385,36 +403,31 @@ function processMobyGrape(rows){
   const cdByRecipient={},merchTotal={items:0,payout:0};
   const details=[],unknowns=[];
   for(const raw of rows){
-    const row=norm(raw);
-    const title=gf(row,"product title","product","title");
-    const variant=gf(row,"variant title","variant");
-    const productType=gf(row,"product type","type");
-    const qty=pn(gf(row,"net quantity","net items sold","quantity sold","quantity","qty"))||1;
-    const netSales=pn(gf(row,"net sales","net revenue","subtotal"));
-    if(!title) continue;
-    const ms=(productType+" "+title+" "+variant).toLowerCase();
-    const isCD=productType.toLowerCase().includes("cd")||ms.includes(" cd")||ms.startsWith("cd");
+    const r=extractRow(raw);
+    if(!r.title) continue;
+    const ms=(r.productType+' '+r.title+' '+r.variant).toLowerCase();
+    const isCD=r.productType.toLowerCase().includes('cd')||ms.includes(' cd')||ms.startsWith('cd');
     if(isCD){
       let cdRule=null;
-      for(const r of MG_CD_RULES){if(r.match.some(k=>ms.includes(k.toLowerCase()))){cdRule=r;break;}}
-      if(!cdRule){unknowns.push({title,variant,netSales,qty,note:"Unknown CD"});continue;}
-      const totalPayout=netSales;
-      const perItem=qty>0?netSales/qty:0;
+      for(const rule of MG_CD_RULES){if(rule.match.some(k=>ms.includes(k.toLowerCase()))){cdRule=rule;break;}}
+      if(!cdRule){unknowns.push({title:r.title,variant:r.variant,netSales:r.netSales,qty:r.qty,note:'Unknown CD'});continue;}
+      const totalPayout=r.isDiscounted?0:r.netSales;
+      const perItem=r.qty>0?totalPayout/r.qty:0;
       const rec=cdRule.recipient;
       if(!cdByRecipient[rec])cdByRecipient[rec]={items:0,payout:0};
-      cdByRecipient[rec].items+=qty;
+      cdByRecipient[rec].items+=r.qty;
       cdByRecipient[rec].payout+=totalPayout;
-      details.push({category:"CD",recipient:rec,title,variant,qty,netSales,perItem,payout:totalPayout});
+      details.push({category:'CD',recipient:rec,title:r.title,variant:r.variant,qty:r.qty,netSales:r.netSales,perItem,payout:totalPayout});
     }else{
       const matched=bestRule(ms,MG_MERCH_RULES);
       if(matched){
-        const totalPayout=netSales<=0?0:matched.payout*qty;
-        const perItem=netSales<=0?0:matched.payout;
-        merchTotal.items+=qty;
+        const totalPayout=r.isDiscounted||r.netSales<=0?0:matched.payout*r.qty;
+        const perItem=r.isDiscounted||r.netSales<=0?0:matched.payout;
+        merchTotal.items+=r.qty;
         merchTotal.payout+=totalPayout;
-        details.push({category:"Merch",recipient:"5-way split",title,variant,qty,netSales,perItem,payout:totalPayout});
+        details.push({category:'Merch',recipient:'5-way split',title:r.title,variant:r.variant,qty:r.qty,netSales:r.netSales,perItem,payout:totalPayout});
       }else{
-        unknowns.push({title,variant,netSales,qty,note:"No matching rule"});
+        unknowns.push({title:r.title,variant:r.variant,netSales:r.netSales,qty:r.qty,note:'No matching rule'});
       }
     }
   }
@@ -424,32 +437,32 @@ function processMobyGrape(rows){
 function processDGM(rows){
   const orgTotals={},details=[],unknowns=[];
   for(const raw of rows){
-    const row=norm(raw);
-    const title=gf(row,"product title","product","title");
-    const variant=gf(row,"variant title","variant");
-    const netSales=pn(gf(row,"net sales","net revenue","subtotal"));
-    const qty=pn(gf(row,"net quantity","net items sold","quantity sold","quantity","qty"))||1;
-    let vendor=gf(row,"product vendor","vendor");
-    const productType=gf(row,"product type","type");
-    if(!title&&!vendor) continue;
-    const isDGM=vendor.toLowerCase().includes("doing good merch")||vendor==="";
-    if(isDGM){const resolved=vendorFromTitle(title);if(resolved)vendor=resolved;else{unknowns.push({title,vendor,netSales,qty,note:"Could not resolve vendor from title"});continue;}}
+    const r=extractRow(raw);
+    if(!r.title&&!r.vendor) continue;
+    let vendor=r.vendor;
+    const isDGM=vendor.toLowerCase().includes('doing good merch')||vendor==='';
+    if(isDGM){
+      const resolved=vendorFromTitle(r.title);
+      if(resolved) vendor=resolved;
+      else{unknowns.push({title:r.title,vendor,netSales:r.netSales,qty:r.qty,note:'Could not resolve vendor from title'});continue;}
+    }
     const orgName=canonVendor(vendor)||vendor;
     const orgRule=DGM_ORGS[orgName];
-    if(!orgRule){unknowns.push({title,vendor:orgName,netSales,qty,note:"Unknown org"});continue;}
-    let payout=0,rule="";
-    const ms=(productType+" "+title).toLowerCase();
-    if(orgRule.type==="none"){rule="No payout";}
-    else if(orgRule.type==="flat_per_item"){payout=orgRule.payout*qty;rule=`$${orgRule.payout} × ${qty}`;}
-    else if(orgRule.type==="pct"){payout=netSales*orgRule.pct;rule=`${orgRule.pct*100}% of net sales`;}
-    else if(orgRule.type==="fixed"){
-      const matched=bestRule(ms,orgRule.rules)||bestRule(productType.toLowerCase(),orgRule.rules);
-      if(matched){payout=matched.payout*qty;rule=`$${matched.payout} × ${qty} (${matched.match[0]})`;}
-      else{rule="⚠️ No matching rule";unknowns.push({title,vendor:orgName,netSales,qty,note:"No matching payout rule"});}
+    if(!orgRule){unknowns.push({title:r.title,vendor:orgName,netSales:r.netSales,qty:r.qty,note:'Unknown org'});continue;}
+    let payout=0,rule='';
+    const ms=(r.productType+' '+r.title).toLowerCase();
+    if(orgRule.type==='none'){rule='No payout';}
+    else if(r.isDiscounted){payout=0;rule='$0 (discounted sale)';}
+    else if(orgRule.type==='flat_per_item'){payout=orgRule.payout*r.qty;rule=`${orgRule.payout} × ${r.qty}`;}
+    else if(orgRule.type==='pct'){payout=r.netSales*orgRule.pct;rule=`${orgRule.pct*100}% of net sales`;}
+    else if(orgRule.type==='fixed'){
+      const matched=bestRule(ms,orgRule.rules)||bestRule(r.productType.toLowerCase(),orgRule.rules);
+      if(matched){payout=r.netSales<=0?0:matched.payout*r.qty;rule=`${matched.payout} × ${r.qty} (${matched.match[0]})`;}
+      else{rule='⚠️ No matching rule';unknowns.push({title:r.title,vendor:orgName,netSales:r.netSales,qty:r.qty,note:'No matching payout rule'});}
     }
     if(!orgTotals[orgName])orgTotals[orgName]={items:0,payout:0};
-    orgTotals[orgName].items+=qty;orgTotals[orgName].payout+=payout;
-    details.push({org:orgName,title,variant,qty,netSales,rule,payout});
+    orgTotals[orgName].items+=r.qty;orgTotals[orgName].payout+=payout;
+    details.push({org:orgName,title:r.title,variant:r.variant,qty:r.qty,netSales:r.netSales,rule,payout});
   }
   return{orgTotals,details,unknowns};
 }
@@ -457,17 +470,19 @@ function processDGM(rows){
 function processPct(rows,cfg){
   let eligible=0,donations=0,excluded=0;const details=[];
   for(const raw of rows){
-    const row=norm(raw);
-    const title=gf(row,"product title","product","title");
-    const netSales=pn(gf(row,"net sales","net revenue","subtotal"));
-    const qty=pn(gf(row,"net quantity","net items sold","quantity sold","quantity","qty"))||1;
-    const dc=gf(row,"discount code","coupon code","discount codes");
-    if(!title) continue;
-    if(cfg.type==="khan"){if(title.toLowerCase().includes("give to khan")||title.toLowerCase().includes("donation")){donations+=netSales;details.push({title,qty,netSales,note:"Donation — included"});}continue;}
-    if(cfg.excludeCodes&&cfg.excludeCodes.some(c=>dc.toUpperCase().includes(c))){excluded+=netSales;details.push({title,qty,netSales,note:`Excluded (code: ${dc})`});continue;}
-    if(cfg.excludePctCodes&&dc&&dc!==""){excluded+=netSales;details.push({title,qty,netSales,note:`Excluded (discount code: ${dc})`});continue;}
-    if(cfg.includeDonations&&(title.toLowerCase().includes("donation")||title.toLowerCase().includes("donate"))){donations+=netSales;details.push({title,qty,netSales,note:"Donation — 100% included"});continue;}
-    eligible+=netSales;details.push({title,qty,netSales,note:`${cfg.pct*100}% of net sales`});
+    const r=extractRow(raw);
+    if(!r.title) continue;
+    if(cfg.type==='khan'){
+      if(r.title.toLowerCase().includes('give to khan')||r.title.toLowerCase().includes('donation')){
+        donations+=r.netSales;details.push({title:r.title,qty:r.qty,netSales:r.netSales,note:'Donation — included'});
+      }
+      continue;
+    }
+    // Exclude discounted sales
+    if(r.isDiscounted){excluded+=r.netSales;details.push({title:r.title,qty:r.qty,netSales:r.netSales,note:`Excluded (discounted sale)`});continue;}
+    if(cfg.excludeCodes&&r.discountCode&&cfg.excludeCodes.some(c=>r.discountCode.toUpperCase().includes(c))){excluded+=r.netSales;details.push({title:r.title,qty:r.qty,netSales:r.netSales,note:`Excluded (code: ${r.discountCode})`});continue;}
+    if(cfg.includeDonations&&(r.title.toLowerCase().includes('donation')||r.title.toLowerCase().includes('donate'))){donations+=r.netSales;details.push({title:r.title,qty:r.qty,netSales:r.netSales,note:'Donation — 100% included'});continue;}
+    eligible+=r.netSales;details.push({title:r.title,qty:r.qty,netSales:r.netSales,note:`${cfg.pct*100}% of net sales`});
   }
   return{eligible,donations,excluded,payout:(eligible*(cfg.pct||0))+donations,details};
 }
@@ -475,24 +490,22 @@ function processPct(rows,cfg){
 function processFixed(rows,cfg){
   let total=0;const details=[],unknowns=[];
   for(const raw of rows){
-    const row=norm(raw);
-    const title=gf(row,"product title","product","title");
-    const productType=gf(row,"product type","type");
-    const qty=pn(gf(row,"net quantity","net items sold","quantity sold","quantity","qty"))||1;
-    const netSales=pn(gf(row,"net sales","net revenue","subtotal"));
-    if(!title) continue;
-    const ms=(productType+" "+title).toLowerCase();
+    const r=extractRow(raw);
+    if(!r.title) continue;
+    const ms=(r.productType+' '+r.title).toLowerCase();
     let matched=bestRule(ms,cfg.rules);
-    if(!matched){const pt=productType.toLowerCase().trim();for(const r of cfg.rules){if(r.match.some(k=>k.toLowerCase()===pt)){matched={...r,_klen:0};break;}}}
-    if(!matched){const pt=productType.toLowerCase().trim();for(const r of cfg.rules){if(r.match.some(k=>pt.includes(k.toLowerCase())||k.toLowerCase().includes(pt))){matched={...r,_klen:0};break;}}}
+    if(!matched){const pt=r.productType.toLowerCase().trim();for(const rule of cfg.rules){if(rule.match.some(k=>k.toLowerCase()===pt)){matched={...rule,_klen:0};break;}}}
+    if(!matched){const pt=r.productType.toLowerCase().trim();for(const rule of cfg.rules){if(rule.match.some(k=>pt.includes(k.toLowerCase())||k.toLowerCase().includes(pt))){matched={...rule,_klen:0};break;}}}
     if(matched){
-      const p=netSales<=0?0:matched.payout*qty;
-      const pi=netSales<=0?0:matched.payout;
+      const discounted=r.isDiscounted||r.netSales<=0;
+      const p=discounted?0:matched.payout*r.qty;
+      const pi=discounted?0:matched.payout;
       total+=p;
-      details.push({title,qty,netSales,payout:p,perItem:pi,note:`$${matched.payout} × ${qty} (${matched.match[0]})${matched.payout===0?" — $0 payout":""}${netSales<=0?" — $0 (returned/refunded)":""}`});
+      const noteExtra=r.isDiscounted?' — $0 (discounted sale)':r.netSales<=0?' — $0 (returned/refunded)':'';
+      details.push({title:r.title,qty:r.qty,netSales:r.netSales,payout:p,perItem:pi,note:`${matched.payout} × ${r.qty} (${matched.match[0]})${matched.payout===0?' — $0 payout':''}${noteExtra}`});
     }else{
-      unknowns.push({title,qty,netSales});
-      details.push({title,qty,netSales,payout:0,perItem:0,note:"⚠️ No matching rule"});
+      unknowns.push({title:r.title,qty:r.qty,netSales:r.netSales});
+      details.push({title:r.title,qty:r.qty,netSales:r.netSales,payout:0,perItem:0,note:'⚠️ No matching rule'});
     }
   }
   return{total,details,unknowns};
