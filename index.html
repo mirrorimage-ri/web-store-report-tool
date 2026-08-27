@@ -362,7 +362,27 @@ function parseCSV(file){return new Promise((res,rej)=>{Papa.parse(file,{header:t
 function canonVendor(v){return VENDOR_CANON[v.toLowerCase().trim()]||null;}
 function vendorFromTitle(title){const t=title.toLowerCase();for(const[kw,org]of TITLE_MAP)if(t.includes(kw.toLowerCase()))return org;return null;}
 
-// ── STORE DETECTION ───────────────────────────────────────────────────────────
+// ── DEDUPLICATION (new per-order format has one row per tag, not per item) ────
+function deduplicateRows(rows) {
+  if (!rows.length) return rows;
+  const r0 = norm(rows[0]);
+  if (r0['is discounted sale'] === undefined) return rows; // old format, no dedup needed
+  const seen = new Set();
+  return rows.filter(raw => {
+    const row = norm(raw);
+    // Use order name (#2959 etc) as primary key — unambiguous string, no float precision issues
+    const orderId = (gf(row,'order name') || gf(row,'sale id')).toString().trim();
+    const sku     = gf(row,'product variant sku').toString().trim();
+    // Rows with no order ID or SKU (blank rows, bulk items) pass through
+    if (!orderId || !sku) return true;
+    const key = `${orderId}|${sku}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+
 function detectStore(rows){
   const keys=new Set();
   for(const raw of rows){
@@ -746,6 +766,7 @@ async function runReport(){
   try{
     const cfg=STORES[detectedKey];
     const label=cfg.label;
+    const rows=deduplicateRows(parsedRows);
     const fmt=v=>"$"+Number(v).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
     const fmtN=v=>v?Number(v).toLocaleString("en-US"):"—";
     let html="";
