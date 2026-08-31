@@ -3,356 +3,326 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Payout Report Processor</title>
+<title>Mirror Image — Payout Report Suite</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:system-ui,sans-serif;background:#f0f2f5;color:#222;padding:24px}
+body{font-family:system-ui,sans-serif;background:#f0f2f5;color:#222;padding:24px;max-width:1000px;margin:0 auto}
 h1{font-size:1.5rem;margin-bottom:4px}
-.sub{color:#666;font-size:.9rem;margin-bottom:24px}
-.card{background:#fff;border-radius:10px;padding:20px;margin-bottom:20px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
-.card h2{font-size:1rem;color:#444;margin-bottom:14px;font-weight:600}
-.drop{border:2px dashed #ccc;border-radius:8px;padding:28px;text-align:center;cursor:pointer;transition:all .15s}
-.drop:hover,.drop.drag{border-color:#2563eb;background:#eff6ff}
-.drop input{display:none}
-.drop .ic{font-size:2rem;margin-bottom:8px}
-.drop p{color:#666;font-size:.9rem}
-.drop .hint{font-size:.78rem;color:#999;margin-top:4px}
-.flist{margin-top:10px}
-.fi{display:flex;align-items:center;gap:8px;padding:5px 10px;background:#f0fdf4;border-radius:6px;font-size:.84rem;margin-bottom:4px}
-.fi .rm{cursor:pointer;color:#aaa;margin-left:auto;font-size:1rem}
-.fi .rm:hover{color:#e00}
-.detected{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;font-size:.88rem;margin-top:12px}
-.detected.ok{background:#f0fdf4;border:1px solid #86efac;color:#166534}
-.detected.err{background:#fef2f2;border:1px solid #fca5a5;color:#991b1b}
-.detected .icon{font-size:1.1rem}
-.fa-inputs{display:none;margin-top:14px;padding:14px;background:#f0fdf4;border:1px solid #86efac;border-radius:8px}
-.fa-inputs p{font-size:.88rem;font-weight:600;color:#166534;margin-bottom:10px}
-.fa-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.fa-grid label{font-size:.84rem;color:#444}
-.fa-grid input{display:block;width:100%;margin-top:4px;padding:6px 10px;border:1px solid #ccc;border-radius:6px;font-size:.84rem}
-.btn{display:inline-block;padding:10px 22px;border-radius:7px;border:none;cursor:pointer;font-size:.95rem;font-weight:600;transition:background .15s}
-.btn-p{background:#2563eb;color:#fff}
-.btn-p:hover{background:#1d4ed8}
-.btn-p:disabled{background:#93c5fd;cursor:not-allowed}
-#status{font-size:.85rem;color:#555;margin-top:10px;min-height:18px}
-.results{margin-top:12px}
-.rb{margin-bottom:16px}
-.rb h3{font-size:.95rem;color:#333;margin-bottom:8px;border-bottom:1px solid #eee;padding-bottom:6px}
-table{width:100%;border-collapse:collapse;font-size:.84rem}
+.sub{color:#666;font-size:.9rem;margin-bottom:20px}
+.card{background:#fff;border-radius:10px;padding:22px;margin-bottom:18px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.card h2{font-size:1.05rem;color:#333;margin-bottom:16px;font-weight:600}
+.steps{display:flex;gap:8px;margin-bottom:20px}
+.step{flex:1;padding:8px 12px;border-radius:8px;font-size:.82rem;text-align:center;background:#e5e7eb;color:#888;font-weight:600}
+.step.active{background:#2563eb;color:#fff}
+.step.done{background:#86efac;color:#166534}
+label.fld{display:block;font-size:.85rem;color:#444;margin-bottom:14px}
+label.fld input,label.fld select{display:block;width:100%;margin-top:5px;padding:8px 11px;border:1px solid #ccc;border-radius:7px;font-size:.9rem}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.toggle{display:flex;gap:8px;margin-top:5px}
+.toggle button{flex:1;padding:9px;border:2px solid #ddd;background:#fafafa;border-radius:7px;cursor:pointer;font-size:.88rem;font-weight:600;color:#666}
+.toggle button.on{border-color:#2563eb;background:#eff6ff;color:#1d4ed8}
+.btn{display:inline-block;padding:11px 24px;border-radius:8px;border:none;cursor:pointer;font-size:.95rem;font-weight:600;transition:background .15s}
+.btn-p{background:#2563eb;color:#fff}.btn-p:hover{background:#1d4ed8}.btn-p:disabled{background:#93c5fd;cursor:not-allowed}
+.btn-g{background:#e5e7eb;color:#444}.btn-g:hover{background:#d1d5db}
+.btnrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
+.slot{border:1px solid #e5e7eb;border-radius:9px;padding:14px;margin-bottom:10px;display:flex;align-items:center;gap:14px}
+.slot .nm{font-weight:600;font-size:.9rem;width:230px;flex-shrink:0}
+.slot .up{flex:1}
+.slot .drop{border:2px dashed #ccc;border-radius:7px;padding:10px;text-align:center;cursor:pointer;font-size:.82rem;color:#888;transition:all .15s}
+.slot .drop:hover,.slot .drop.drag{border-color:#2563eb;background:#eff6ff}
+.slot .drop input{display:none}
+.slot .stat{width:210px;flex-shrink:0;font-size:.82rem}
+.stat.ok{color:#166534}.stat.warn{color:#92400e}.stat.err{color:#991b1b}
+.mono{font-variant-numeric:tabular-nums}
+table{width:100%;border-collapse:collapse;font-size:.84rem;margin-top:6px}
 th{background:#f3f4f6;text-align:left;padding:7px 10px;font-weight:600;color:#555}
 td{padding:6px 10px;border-bottom:1px solid #f0f0f0}
-tr:last-child td{border-bottom:none;font-weight:600;background:#f9fafb}
-.warn-box{background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;padding:10px 14px;font-size:.84rem;color:#92400e;margin-top:8px}
+.rt{text-align:right}
+.badge{display:inline-block;font-size:.7rem;padding:2px 8px;border-radius:20px;font-weight:600}
+.badge.check{background:#dbeafe;color:#1e40af}
+.badge.paypal{background:#dcfce7;color:#166534}
+.badge.inactive{background:#fee2e2;color:#991b1b}
+.warn-box{background:#fffbeb;border:1px solid #fcd34d;border-radius:7px;padding:11px 14px;font-size:.83rem;color:#92400e;margin-top:10px}
 .warn-box ul{margin-top:4px;padding-left:18px}
-.drow{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
-.note{font-size:.82rem;color:#555;margin-top:8px}
+.email-block{border:1px solid #e5e7eb;border-radius:8px;padding:14px;margin-bottom:12px}
+.email-block h4{font-size:.9rem;margin-bottom:8px;color:#333}
+.email-block textarea{width:100%;height:150px;border:1px solid #ddd;border-radius:6px;padding:10px;font-size:.82rem;font-family:inherit;resize:vertical}
+.copybtn{margin-top:6px;font-size:.8rem;padding:5px 12px}
+.hidden{display:none}
+#status{font-size:.85rem;color:#555;margin-top:10px;min-height:18px}
+.hint{font-size:.8rem;color:#999;margin-top:6px}
 </style>
 </head>
 <body>
-<h1>🧾 Payout Report Processor</h1>
-<p class="sub">Upload Shopify CSV export(s) — the store is detected automatically from the product vendor column.</p>
+<h1>🧾 Mirror Image — Payout Report Suite</h1>
+<p class="sub">Guided quarterly/monthly payout processing for all web stores.</p>
 
-<div class="card">
-  <h2>1. Upload Shopify CSV(s)</h2>
-  <div class="drop" id="dropZone">
-    <input type="file" id="fileInput" accept=".csv" multiple>
-    <div class="ic">📂</div>
-    <p>Click to choose files or drag &amp; drop here</p>
-    <p class="hint">Shopify "Sales by product" CSV export</p>
-  </div>
-  <div class="flist" id="fileList"></div>
-  <div id="detectedStore"></div>
-  <div class="fa-inputs" id="farmaidInputs">
-    <p>📊 Farm Aid — Enter metrics from Shopify Analytics dashboard</p>
-    <div class="fa-grid">
-      <label>Report Month (e.g. March 2026)
-        <input id="fa-month" type="text" placeholder="March 2026">
+<div class="steps">
+  <div class="step active" id="stp1">1 · Setup</div>
+  <div class="step" id="stp2">2 · Upload Reports</div>
+  <div class="step" id="stp3">3 · Review &amp; Generate</div>
+</div>
+
+<!-- SCREEN 1 -->
+<div id="screen1">
+  <div class="card">
+    <h2>Report Setup</h2>
+    <label class="fld">Reporting Period
+      <div class="toggle" id="periodToggle">
+        <button data-t="quarter" class="on" onclick="setPeriodType('quarter')">Quarterly</button>
+        <button data-t="month" onclick="setPeriodType('month')">Monthly</button>
+      </div>
+    </label>
+    <div class="row2">
+      <label class="fld" id="periodValueWrap">Quarter
+        <select id="periodValue">
+          <option value="Q1">Q1 (Jan–Mar)</option>
+          <option value="Q2">Q2 (Apr–Jun)</option>
+          <option value="Q3">Q3 (Jul–Sep)</option>
+          <option value="Q4">Q4 (Oct–Dec)</option>
+        </select>
       </label>
-      <label>Online Store Sessions
-        <input id="fa-sessions" type="number" placeholder="e.g. 49020">
-      </label>
-      <label>Conversion Rate (%)
-        <input id="fa-conversion" type="number" step="0.01" placeholder="e.g. 0.09">
+      <label class="fld">Year
+        <input id="periodYear" type="number" placeholder="2026" value="2026">
       </label>
     </div>
+    <label class="fld">Prepared by (your name)
+      <input id="preparer" type="text" placeholder="e.g. Eliot">
+    </label>
+    <div class="btnrow">
+      <button class="btn btn-p" onclick="goScreen(2)">Continue to Uploads →</button>
+    </div>
+    <p class="hint">The period type sets the platform fee shown for separate billing (1× $85 monthly, 3× $85 = $255 quarterly). Fees are shown separately and never subtracted from payouts.</p>
   </div>
 </div>
 
-<div class="card">
-  <h2>📦 Farm Aid Shipping Report (ShipStation)</h2>
-  <p style="font-size:.85rem;color:#666;margin-bottom:14px">Upload ShipStation CSV exports independently — no sales data needed.</p>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
-    <div>
-      <p style="font-size:.85rem;font-weight:600;color:#444;margin-bottom:6px">Web Store Orders</p>
-      <div class="drop" id="ssWebDrop" style="padding:16px">
-        <input type="file" id="ssWebInput" accept=".csv">
-        <div class="ic" style="font-size:1.4rem;margin-bottom:4px">📂</div>
-        <p style="font-size:.82rem">Click or drag to upload</p>
-      </div>
-      <div id="ssWebFile" style="margin-top:6px;font-size:.82rem;color:#166534"></div>
+<!-- SCREEN 2 -->
+<div id="screen2" class="hidden">
+  <div class="card">
+    <h2>Upload Each Store's Shopify Export</h2>
+    <p class="hint" style="margin-bottom:14px">Drop each store's CSV in its slot. The tool auto-detects and warns if a file doesn't match. Leave a slot empty to skip that store.</p>
+    <div id="slotList"></div>
+    <div class="btnrow" style="margin-top:16px">
+      <button class="btn btn-g" onclick="goScreen(1)">← Back</button>
+      <button class="btn btn-p" id="toReviewBtn" onclick="goScreen(3)">Review &amp; Generate →</button>
     </div>
-    <div>
-      <p style="font-size:.85rem;font-weight:600;color:#444;margin-bottom:6px">Manual Orders</p>
-      <div class="drop" id="ssManualDrop" style="padding:16px">
-        <input type="file" id="ssManualInput" accept=".csv">
-        <div class="ic" style="font-size:1.4rem;margin-bottom:4px">📂</div>
-        <p style="font-size:.82rem">Click or drag to upload</p>
-      </div>
-      <div id="ssManualFile" style="margin-top:6px;font-size:.82rem;color:#166534"></div>
-    </div>
+    <div id="status"></div>
   </div>
-  <label style="font-size:.84rem;color:#444;display:block;margin-bottom:12px">Report Month (e.g. March 2026)
-    <input id="ss-month" type="text" placeholder="March 2026" style="display:block;width:220px;margin-top:4px;padding:6px 10px;border:1px solid #ccc;border-radius:6px;font-size:.84rem">
-  </label>
-  <button class="btn btn-p" id="ssRunBtn" disabled onclick="runShippingReport()">Generate Shipping Report</button>
-  <div id="ssStatus" style="font-size:.85rem;color:#555;margin-top:10px;min-height:18px"></div>
-  <div id="ssResults" class="results"></div>
 </div>
 
-
-  <button class="btn btn-p" id="runBtn" disabled onclick="runReport()">Generate Payout Report</button>
-  <div id="status"></div>
-  <div class="results" id="results"></div>
+<!-- SCREEN 3 -->
+<div id="screen3" class="hidden">
+  <div class="card">
+    <h2>Review Payouts</h2>
+    <div id="reviewArea"></div>
+    <div class="btnrow" style="margin-top:16px">
+      <button class="btn btn-g" onclick="goScreen(2)">← Back to Uploads</button>
+      <button class="btn btn-p" onclick="generateAll()">⚙️ Generate All Outputs</button>
+    </div>
+  </div>
+  <div id="outputArea"></div>
 </div>
 
 <script>
-const MONTHS = 3;
+// ═══ PERIOD / STATE ═══════════════════════════════════════════════════════════
+let periodType='quarter';
+function setPeriodType(t){
+  periodType=t;
+  document.querySelectorAll('#periodToggle button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
+  const wrap=document.getElementById('periodValueWrap');
+  if(t==='quarter'){
+    wrap.childNodes[0].nodeValue='Quarter';
+    document.getElementById('periodValue').outerHTML=`<select id="periodValue">
+      <option value="Q1">Q1 (Jan–Mar)</option><option value="Q2">Q2 (Apr–Jun)</option>
+      <option value="Q3">Q3 (Jul–Sep)</option><option value="Q4">Q4 (Oct–Dec)</option></select>`;
+  }else{
+    wrap.childNodes[0].nodeValue='Month';
+    document.getElementById('periodValue').outerHTML=`<select id="periodValue">
+      ${["January","February","March","April","May","June","July","August","September","October","November","December"].map(m=>`<option value="${m}">${m}</option>`).join('')}</select>`;
+  }
+}
+function MONTHS(){ return periodType==='quarter'?3:1; }
+function periodLabel(){
+  const v=document.getElementById('periodValue').value;
+  const y=document.getElementById('periodYear').value||'';
+  return `${v} ${y}`.trim();
+}
 
-// ── VENDOR DETECTION ─────────────────────────────────────────────────────────
+// ═══ PAYMENT DIRECTORY ════════════════════════════════════════════════════════
+const PAY = {
+  majority:  {method:'Check',  payable:'Pilot Season Inc.'},
+  amnesty:   {method:'Check',  payable:'Amnesty International USA'},
+  caritas:   {method:'Check',  payable:'Caritas of Austin'},
+  khan:      {method:'PayPal', payable:'Khan Academy donation portal'},
+  naeh:      {method:'Check',  payable:'National Alliance to End Homelessness'},
+  toscani:   {method:'Check',  payable:"899 Toscanini's LLC"},
+  mobygrape: {method:'Check',  payable:'Individual checks per recipient'},
+};
+const DGM_PAY = {
+  "Abolition Wear":                                    {method:'PayPal', payable:'Death Penalty Action account'},
+  "Aid for the Ukrainian People":                      {method:'PayPal', payable:'Aerotim'},
+  "Georgia Catholics Against the Death Penalty":       {method:'Check',  payable:'Most Blessed Sacrament Catholic Church'},
+  "National Lawyers Guild Detroit & Michigan Chapter": {method:'Check',  payable:'NLG Detroit & Michigan'},
+  "Snug Harbor Jazz Bistro":                           {method:'Check',  payable:'Snug Jazz LLC'},
+  "The Middle East Restaurant":                        {method:'Check',  payable:'Middle East Restaurant'},
+  "The Plough & Stars":                                {method:'Check',  payable:'Curlocom LLC'},
+  "Minimum Wage Art":                                  {method:'Check',  payable:'John Smith "Smitty"'},
+  "HONK! Festival":                                    {method:'Check',  payable:'Honk Festival'},
+  "Tibet Action":                                      {method:'Check',  payable:'Tibet Action Institute'},
+};
+const ARCHIVED = new Set(["Artifactor","Catholics For Abolition in North Carolina","Hurricane Helene Western North Carolina Relief"]);
+
+// ═══ STORE DETECTION ══════════════════════════════════════════════════════════
 const STORE_VENDOR_MAP = {
-  "farm aid store":              "farmaid",
-  "farm aid":                    "farmaid",
-  "moby grape store":            "mobygrape",
-  "the majority report store":   "majority",
-  "amnesty international usa":   "amnesty",
-  "amnesty international usa store": "amnesty",
-  "caritas of austin store":     "caritas",
-  "caritas of austin":           "caritas",
-  "khan academy store":          "khan",
-  "national alliance to end homelessness": "naeh",
-  "toscanini's online store":    "toscani",
-  "toscaninis online store":     "toscani",
+  "farm aid store":"farmaid","farm aid":"farmaid",
+  "moby grape store":"mobygrape",
+  "the majority report store":"majority",
+  "amnesty international usa":"amnesty","amnesty international usa store":"amnesty",
+  "caritas of austin store":"caritas","caritas of austin":"caritas",
+  "khan academy store":"khan",
+  "national alliance to end homelessness":"naeh",
+  "toscanini's online store":"toscani","toscaninis online store":"toscani",
 };
-
 const STORE_TITLE_HINTS = {
-  farmaid:    ["farm aid","farmaid"],
-  mobygrape:  ["moby grape","bob mosley","peter lewis","don stevenson","remington riders","jerry miller","truly fine citizen"],
-  majority:   ["majority report","sam seder","left is best","whoopsie","f*cking dork","fucking dork","trump slump","pause it","emmajority","max left","whispering sam"],
-  amnesty:    ["amnesty international","human rights","believe women","build bridges not walls","raise your voice","candle to dove"],
-  caritas:    ["caritas of austin","end homelessness","be a good neighbor"],
-  khan:       ["khan academy","give to khan","khanmoji"],
-  naeh:       ["national alliance to end homelessness","end homelessness hoodie","faith, love and home","home, faith and love"],
-  toscani:    ["toscanini","tosci"],
+  farmaid:["farm aid","farmaid"],
+  mobygrape:["moby grape","bob mosley","peter lewis","don stevenson","remington riders","jerry miller","truly fine citizen"],
+  majority:["majority report","sam seder","left is best","whoopsie","f*cking dork","fucking dork","trump slump","pause it","emmajority","max left","whispering sam"],
+  amnesty:["amnesty international","human rights","believe women","build bridges not walls","raise your voice","candle to dove"],
+  caritas:["caritas of austin","be a good neighbor"],
+  khan:["khan academy","give to khan","khanmoji"],
+  naeh:["national alliance to end homelessness","faith, love and home","home, faith and love"],
+  toscani:["toscanini","tosci"],
 };
 
-// ── STORE CONFIGS ─────────────────────────────────────────────────────────────
+// ═══ STORE CONFIGS ════════════════════════════════════════════════════════════
 const STORES = {
-  farmaid:  { label:"Farm Aid", type:"farmaid" },
-  mobygrape:{ label:"Moby Grape", type:"moby_grape" },
-  majority: { label:"The Majority Report", type:"fixed_store", monthlyFee:85, rules:[
-    { match:["whistle"],                                                     payout:0 },
-    { match:["face mask","mask"],                                            payout:0 },
-    { match:["pullover hoodie and beanie bundle","hoodie and beanie bundle"], payout:10 },
-    { match:["scarf and beanie bundle"],                                     payout:15 },
-    { match:["pullover","zip hoodie","hoodie","sweatshirt"],                  payout:0 },
-    { match:["f-in dork","dork shirt","fucking dork","f*cking dork"],        payout:5 },
-    { match:["long sleeve","longsleeve","baseball shirt","baseball tee"],    payout:10 },
-    { match:["t-shirt","tee"],                                               payout:10 },
-    { match:["travel mug"],                                                  payout:2 },
-    { match:["mug"],                                                         payout:5 },
-    { match:["bandana"],                                                     payout:5 },
-    { match:["baseball hat","baseball cap","hat","cap","trucker","beanie"],  payout:5 },
-    { match:["pencil"],                                                      payout:5 },
-    { match:["tank"],                                                        payout:5 },
-    { match:["scarf"],                                                       payout:5 },
-    { match:["tote"],                                                        payout:5 },
-    { match:["dog collar"],                                                  payout:3 },
-    { match:["sticker"],                                                     payout:1.5 },
+  farmaid:{label:"Farm Aid",type:"farmaid"},
+  mobygrape:{label:"Moby Grape",type:"moby_grape"},
+  majority:{label:"The Majority Report",type:"fixed_store",monthlyFee:85,rules:[
+    {match:["whistle"],payout:0},
+    {match:["face mask","mask"],payout:0},
+    {match:["pullover hoodie and beanie bundle","hoodie and beanie bundle"],payout:10},
+    {match:["scarf and beanie bundle"],payout:15},
+    {match:["pullover","zip hoodie","hoodie","sweatshirt"],payout:0},
+    {match:["f-in dork","dork shirt","fucking dork","f*cking dork"],payout:5},
+    {match:["long sleeve","longsleeve","baseball shirt","baseball tee"],payout:10},
+    {match:["t-shirt","tee"],payout:10},
+    {match:["travel mug"],payout:2},
+    {match:["mug"],payout:5},
+    {match:["bandana"],payout:5},
+    {match:["baseball hat","baseball cap","hat","cap","trucker","beanie"],payout:5},
+    {match:["pencil"],payout:5},
+    {match:["tank"],payout:5},
+    {match:["scarf"],payout:5},
+    {match:["tote"],payout:5},
+    {match:["dog collar"],payout:3},
+    {match:["sticker"],payout:1.5},
   ]},
-  amnesty:  { label:"Amnesty International USA", type:"pct", pct:.15, includeDonations:true, excludeCodes:["AIUSASTAFF10","ACTIVISMX15"] },
-  caritas:  { label:"Caritas of Austin", type:"pct", pct:.25, monthlyFee:85 },
-  khan:     { label:"Khan Academy", type:"khan" },
-  naeh:     { label:"National Alliance to End Homelessness", type:"pct", pct:.25, excludePctCodes:true, monthlyFee:85 },
-  toscani:  { label:"Toscanini's", type:"fixed_store", recipient:"899 Toscanini's LLC", rules:[
-    { match:["tank"],                                                        payout:5 },
-    { match:["garment washed trucker","garment-washed trucker"],             payout:7 },
-    { match:["white trucker"],                                               payout:7 },
-    { match:["unstructured hat","unstructured"],                             payout:5 },
-    { match:["hat","cap","trucker"],                                         payout:7 },
-    { match:["crewneck","crew neck"],                                        payout:11 },
-    { match:["hoodie","sweatshirt"],                                         payout:15 },
-    { match:["t-shirt","tee"],                                               payout:6 },
+  amnesty:{label:"Amnesty International USA",type:"pct",pct:.15,includeDonations:true,excludeCodes:["AIUSASTAFF10","ACTIVISMX15"]},
+  caritas:{label:"Caritas of Austin",type:"pct",pct:.25,monthlyFee:85},
+  khan:{label:"Khan Academy",type:"khan"},
+  naeh:{label:"National Alliance to End Homelessness",type:"pct",pct:.25,excludePctCodes:true,monthlyFee:85},
+  toscani:{label:"Toscanini's",type:"fixed_store",recipient:"899 Toscanini's LLC",rules:[
+    {match:["tank"],payout:5},
+    {match:["garment washed trucker","garment-washed trucker"],payout:7},
+    {match:["white trucker"],payout:7},
+    {match:["unstructured hat","unstructured"],payout:5},
+    {match:["hat","cap","trucker"],payout:7},
+    {match:["crewneck","crew neck"],payout:11},
+    {match:["hoodie","sweatshirt"],payout:15},
+    {match:["t-shirt","tee"],payout:6},
   ]},
-  dgm: { label:"Doing Good Merch", type:"dgm" },
+  dgm:{label:"Doing Good Merch",type:"dgm"},
 };
 
-// ── DGM ORG RULES ─────────────────────────────────────────────────────────────
 const DGM_ORGS = {
-  "The Plough & Stars":{ type:"fixed", rules:[
-    { match:["bandana"],                              payout:5 },
-    { match:["pullover","hoodie","sweatshirt"],        payout:10 },
-    { match:["t-shirt","tee","ringer","unisex t"],    payout:10 },
-    { match:["tank"],                                 payout:5 },
-    { match:["hat","cap","beanie","trucker"],          payout:10 },
+  "The Plough & Stars":{type:"fixed",rules:[
+    {match:["bandana"],payout:5},
+    {match:["pullover","hoodie","sweatshirt"],payout:10},
+    {match:["t-shirt","tee","ringer","unisex t"],payout:10},
+    {match:["tank"],payout:5},
+    {match:["hat","cap","beanie","trucker"],payout:10},
   ]},
-  "Snug Harbor Jazz Bistro":{ type:"fixed", rules:[
-    { match:["t-shirt","tee"],   payout:10 },
-    { match:["mug"],             payout:5 },
-    { match:["hat","cap"],       payout:5 },
-    { match:["hoodie","sweatshirt"], payout:10 },
-    { match:["long sleeve"],     payout:10 },
-    { match:["face mask","mask"],payout:10 },
-    { match:["dvd"],             payout:10 },
+  "Snug Harbor Jazz Bistro":{type:"fixed",rules:[
+    {match:["t-shirt","tee"],payout:10},{match:["mug"],payout:5},{match:["hat","cap"],payout:5},
+    {match:["hoodie","sweatshirt"],payout:10},{match:["long sleeve"],payout:10},
+    {match:["face mask","mask"],payout:10},{match:["dvd"],payout:10},
   ]},
-  "The Middle East Restaurant":{ type:"fixed", rules:[
-    { match:["bandana"],         payout:5 },
-    { match:["pullover","hoodie","sweatshirt"], payout:10 },
-    { match:["t-shirt","tee"],   payout:10 },
-    { match:["tank"],            payout:5 },
+  "The Middle East Restaurant":{type:"fixed",rules:[
+    {match:["bandana"],payout:5},{match:["pullover","hoodie","sweatshirt"],payout:10},
+    {match:["t-shirt","tee"],payout:10},{match:["tank"],payout:5},
   ]},
-  "Catholics For Abolition in North Carolina":{ type:"fixed", rules:[
-    { match:["shirt","tee","t-shirt"], payout:10 },
+  "Catholics For Abolition in North Carolina":{type:"fixed",rules:[{match:["shirt","tee","t-shirt"],payout:10}]},
+  "Aid for the Ukrainian People":{type:"flat_per_item",payout:15},
+  "Abolition Wear":{type:"pct",pct:.10},
+  "National Lawyers Guild Detroit & Michigan Chapter":{type:"fixed",rules:[
+    {match:["t-shirt","tee"],payout:5},{match:["hoodie","sweatshirt"],payout:10},{match:["sticker"],payout:1},
   ]},
-  "Aid for the Ukrainian People":{ type:"flat_per_item", payout:15 },
-  "Abolition Wear":{ type:"pct", pct:.10 },
-  "National Lawyers Guild Detroit & Michigan Chapter":{ type:"fixed", rules:[
-    { match:["t-shirt","tee"],   payout:5 },
-    { match:["hoodie","sweatshirt"], payout:10 },
-    { match:["sticker"],         payout:1 },
+  "Georgia Catholics Against the Death Penalty":{type:"pct",pct:.10},
+  "Artifactor":{type:"fixed",rules:[
+    {match:["t-shirt","tee"],payout:10},{match:["long sleeve","longsleeve"],payout:10},
+    {match:["hoodie","sweatshirt","crewneck"],payout:10},{match:["tote"],payout:5},
   ]},
-  "Georgia Catholics Against the Death Penalty":{ type:"pct", pct:.10 },
-  "Artifactor":{ type:"fixed", rules:[
-    { match:["t-shirt","tee"],   payout:10 },
-    { match:["long sleeve","longsleeve"], payout:10 },
-    { match:["hoodie","sweatshirt","crewneck"], payout:10 },
-    { match:["tote"],            payout:5 },
+  "Minimum Wage Art":{type:"fixed",rules:[{match:["shirt","tee","t-shirt"],payout:10}]},
+  "HONK! Festival":{type:"fixed",rules:[{match:["shirt","tee","t-shirt"],payout:5}]},
+  "Tibet Action":{type:"fixed",rules:[
+    {match:["shirt","tee","t-shirt"],payout:10},{match:["onesie","baby"],payout:5},{match:["tote"],payout:5},
   ]},
-  "Minimum Wage Art":{ type:"fixed", rules:[
-    { match:["shirt","tee","t-shirt"], payout:10 },
-  ]},
-  "HONK! Festival":{ type:"fixed", rules:[
-    { match:["shirt","tee","t-shirt"], payout:5 },
-  ]},
-  "Tibet Action":{ type:"fixed", rules:[
-    { match:["shirt","tee","t-shirt"], payout:10 },
-    { match:["onesie","baby"],   payout:5 },
-    { match:["tote"],            payout:5 },
-  ]},
-  "Hurricane Helene Western North Carolina Relief":{ type:"flat_per_item", payout:15 },
-  "Ink Kitchen":            { type:"none" },
-  "Pawtucket Film Festival":{ type:"none" },
-  "Nantucket Spaghetti Festival":{ type:"none" },
-  "NOMC":                   { type:"none" },
+  "Hurricane Helene Western North Carolina Relief":{type:"flat_per_item",payout:15},
+  "Ink Kitchen":{type:"none"},"Pawtucket Film Festival":{type:"none"},
+  "Nantucket Spaghetti Festival":{type:"none"},"NOMC":{type:"none"},
 };
 
 const VENDOR_CANON = {
-  "the plough & stars":"The Plough & Stars",
-  "the plough and stars":"The Plough & Stars",
-  "plough & stars":"The Plough & Stars",
-  "plough and stars":"The Plough & Stars",
-  "snug harbor jazz bistro":"Snug Harbor Jazz Bistro",
-  "snug harbor":"Snug Harbor Jazz Bistro",
-  "the middle east restaurant":"The Middle East Restaurant",
-  "middle east restaurant":"The Middle East Restaurant",
-  "the middle east":"The Middle East Restaurant",
-  "catholics for abolition in north carolina":"Catholics For Abolition in North Carolina",
-  "catholics for abolition":"Catholics For Abolition in North Carolina",
+  "the plough & stars":"The Plough & Stars","the plough and stars":"The Plough & Stars",
+  "plough & stars":"The Plough & Stars","plough and stars":"The Plough & Stars",
+  "snug harbor jazz bistro":"Snug Harbor Jazz Bistro","snug harbor":"Snug Harbor Jazz Bistro",
+  "the middle east restaurant":"The Middle East Restaurant","middle east restaurant":"The Middle East Restaurant","the middle east":"The Middle East Restaurant",
+  "catholics for abolition in north carolina":"Catholics For Abolition in North Carolina","catholics for abolition":"Catholics For Abolition in North Carolina",
   "aid for the ukrainian people":"Aid for the Ukrainian People",
   "abolition wear":"Abolition Wear",
   "national lawyers guild detroit & michigan chapter":"National Lawyers Guild Detroit & Michigan Chapter",
   "national lawyers guild- detroit & michigan":"National Lawyers Guild Detroit & Michigan Chapter",
   "national lawyers guild detroit & michigan":"National Lawyers Guild Detroit & Michigan Chapter",
-  "national lawyers guild":"National Lawyers Guild Detroit & Michigan Chapter",
-  "nlg":"National Lawyers Guild Detroit & Michigan Chapter",
-  "georgia catholics against the death penalty":"Georgia Catholics Against the Death Penalty",
-  "georgia catholics":"Georgia Catholics Against the Death Penalty",
-  "gacadp":"Georgia Catholics Against the Death Penalty",
-  "artifactor":"Artifactor",
-  "minimum wage art":"Minimum Wage Art",
-  "honk!":"HONK! Festival",
-  "honk":"HONK! Festival",
-  "honk! festival":"HONK! Festival",
-  "honk festival":"HONK! Festival",
+  "national lawyers guild":"National Lawyers Guild Detroit & Michigan Chapter","nlg":"National Lawyers Guild Detroit & Michigan Chapter",
+  "georgia catholics against the death penalty":"Georgia Catholics Against the Death Penalty","georgia catholics":"Georgia Catholics Against the Death Penalty","gacadp":"Georgia Catholics Against the Death Penalty",
+  "artifactor":"Artifactor","minimum wage art":"Minimum Wage Art",
+  "honk!":"HONK! Festival","honk":"HONK! Festival","honk! festival":"HONK! Festival","honk festival":"HONK! Festival",
   "tibet action":"Tibet Action",
   "hurricane helene western north carolina relief":"Hurricane Helene Western North Carolina Relief",
-  "ink kitchen":"Ink Kitchen",
-  "nomc":"NOMC",
+  "ink kitchen":"Ink Kitchen","nomc":"NOMC",
 };
-
 const TITLE_MAP = [
-  ["plough","The Plough & Stars"],
-  ["snug harbor","Snug Harbor Jazz Bistro"],
-  ["middle east","The Middle East Restaurant"],
-  ["catholics for abolition","Catholics For Abolition in North Carolina"],
-  ["ukraine","Aid for the Ukrainian People"],
-  ["vostok","Aid for the Ukrainian People"],
-  ["execute justice","Abolition Wear"],
-  ["abolition wear","Abolition Wear"],
+  ["plough","The Plough & Stars"],["snug harbor","Snug Harbor Jazz Bistro"],["middle east","The Middle East Restaurant"],
+  ["catholics for abolition","Catholics For Abolition in North Carolina"],["ukraine","Aid for the Ukrainian People"],["vostok","Aid for the Ukrainian People"],
+  ["execute justice","Abolition Wear"],["abolition wear","Abolition Wear"],
   ["national lawyers guild","National Lawyers Guild Detroit & Michigan Chapter"],
-  ["artifactor","Artifactor"],
-  ["mardi gras","Artifactor"],
-  ["crescent city","Artifactor"],
-  ["superfatt","Artifactor"],
-  ["zulu postcard","Artifactor"],
-  ["minimum wage art","Minimum Wage Art"],
-  ["honk","HONK! Festival"],
-  ["tibet","Tibet Action"],
-  ["yak dri","Tibet Action"],
-  ["hurricane helene","Hurricane Helene Western North Carolina Relief"],
-  ["ink kitchen","Ink Kitchen"],
-  ["long beach impressions","Ink Kitchen"],
-  ["dallas impressions","Ink Kitchen"],
-  ["pawtucket film festival","Pawtucket Film Festival"],
-  ["nantucket spaghetti","Nantucket Spaghetti Festival"],
-  ["pasta","Nantucket Spaghetti Festival"],
-  ["bayou rendezvous","NOMC"],
-  ["gacadp","Georgia Catholics Against the Death Penalty"],
+  ["artifactor","Artifactor"],["mardi gras","Artifactor"],["crescent city","Artifactor"],["superfatt","Artifactor"],["zulu postcard","Artifactor"],
+  ["minimum wage art","Minimum Wage Art"],["honk","HONK! Festival"],["tibet","Tibet Action"],["yak dri","Tibet Action"],["chomolungma","Tibet Action"],
+  ["hurricane helene","Hurricane Helene Western North Carolina Relief"],["nc relief","Hurricane Helene Western North Carolina Relief"],
+  ["ink kitchen","Ink Kitchen"],["long beach impressions","Ink Kitchen"],["dallas impressions","Ink Kitchen"],
+  ["pawtucket film festival","Pawtucket Film Festival"],["nantucket spaghetti","Nantucket Spaghetti Festival"],["pasta","Nantucket Spaghetti Festival"],
+  ["bayou rendezvous","NOMC"],["save nola","NOMC"],["gacadp","Georgia Catholics Against the Death Penalty"],
 ];
 
-// ── MOBY GRAPE ────────────────────────────────────────────────────────────────
-const MG_MERCH_MEMBERS = ["Peter Lewis","Omar Spence","Don Stevenson","Jerry Miller (Jo Johnson)","Bob Mosley"];
-
-const MG_CD_RULES = [
-  { match:["buskin","don stevenson"],                          recipient:"Don Stevenson" },
-  { match:["road to zion"],                                    recipient:"John Denicola" },
-  { match:["just like jack","live at lobero","live in bremen"],recipient:"Peter Lewis" },
-  { match:["true blue","bob mosley"],                          recipient:"Bob Mosley" },
-  { match:["remington","riding high","feeling miserable","jerry's last ride","jerrys last ride"], recipient:"Jan Lewis" },
+// ═══ MOBY GRAPE ═══════════════════════════════════════════════════════════════
+const MG_MERCH_MEMBERS=["Peter Lewis","Omar Spence","Don Stevenson","Jerry Miller (Jo Johnson)","Bob Mosley"];
+const MG_CD_RULES=[
+  {match:["buskin","don stevenson"],recipient:"Don Stevenson"},
+  {match:["road to zion"],recipient:"John Denicola"},
+  {match:["just like jack","live at lobero","live in bremen"],recipient:"Peter Lewis"},
+  {match:["true blue","bob mosley"],recipient:"Bob Mosley"},
+  {match:["remington","riding high","feeling miserable","jerry's last ride","jerrys last ride"],recipient:"Jan Lewis"},
+];
+const MG_MERCH_RULES=[
+  {match:["sticker set","set of 4","set of four","4 sticker","4-sticker"],payout:5},
+  {match:["button"],payout:1.5},{match:["sticker"],payout:1},{match:["tie dye","tie-dye"],payout:10},
+  {match:["t-shirt","tee"],payout:10},{match:["hoodie","sweatshirt"],payout:10},{match:["face mask","mask"],payout:0},
 ];
 
-const MG_MERCH_RULES = [
-  { match:["sticker set","set of 4","set of four","4 sticker","4-sticker"], payout:5 },
-  { match:["button"],   payout:1.5 },
-  { match:["sticker"],  payout:1 },
-  { match:["tie dye","tie-dye"], payout:10 },
-  { match:["t-shirt","tee"],     payout:10 },
-  { match:["hoodie","sweatshirt"], payout:10 },
-  { match:["face mask","mask"],  payout:0 },
-];
-
-// ── ROW NORMALIZER (handles both old aggregated and new per-order formats) ────
-function extractRow(raw) {
-  const row = norm(raw);
-  const isNew = row['is discounted sale'] !== undefined;
-  const isDiscounted = isNew && gf(row,'is discounted sale').toLowerCase().trim() === 'true';
-  const gross = pn(gf(row,'gross sales'));
-  const qty = isNew ? 1 : (pn(gf(row,'net quantity','net items sold','quantity sold','quantity','qty')) || 1);
-  const netSales = isNew
-    ? (isDiscounted ? 0 : gross)
-    : pn(gf(row,'net sales','net revenue','subtotal'));
-  return {
-    title:       gf(row,'product title','product title at time of sale','product','title'),
-    productType: gf(row,'product type','type'),
-    vendor:      gf(row,'product vendor','vendor'),
-    variant:     gf(row,'product variant title','variant title','variant'),
-    discountCode:gf(row,'discount title','discount code','coupon code'),
-    qty, netSales, grossSales:gross, isDiscounted,
-  };
-}
-
-
+// ═══ HELPERS ══════════════════════════════════════════════════════════════════
 function norm(row){const o={};Object.entries(row).forEach(([k,v])=>{o[k.trim().toLowerCase()]=(v||"").trim();});return o;}
 function gf(row,...keys){for(const k of keys)if(row[k]!==undefined&&row[k]!=="")return row[k];return "";}
 function pn(s){return parseFloat(String(s||"").replace(/[^0-9.\-]/g,""))||0;}
@@ -361,541 +331,457 @@ function bestRule(ms,rules){let best=null;for(const r of rules){if(tmatch(ms,r.m
 function parseCSV(file){return new Promise((res,rej)=>{Papa.parse(file,{header:true,skipEmptyLines:true,complete:r=>res(r.data),error:rej});});}
 function canonVendor(v){return VENDOR_CANON[v.toLowerCase().trim()]||null;}
 function vendorFromTitle(title){const t=title.toLowerCase();for(const[kw,org]of TITLE_MAP)if(t.includes(kw.toLowerCase()))return org;return null;}
+const money=v=>"$"+Number(v||0).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
 
-// ── DEDUPLICATION (new per-order format has one row per tag, not per item) ────
-function deduplicateRows(rows) {
-  if (!rows.length) return rows;
-  const r0 = norm(rows[0]);
-  if (r0['is discounted sale'] === undefined) return rows; // old format, no dedup needed
-  const seen = new Set();
-  return rows.filter(raw => {
-    const row = norm(raw);
-    // Use order name (#2959 etc) as primary key — unambiguous string, no float precision issues
-    const orderId = (gf(row,'order name') || gf(row,'sale id')).toString().trim();
-    const sku     = gf(row,'product variant sku').toString().trim();
-    // Rows with no order ID or SKU (blank rows, bulk items) pass through
-    if (!orderId || !sku) return true;
-    const key = `${orderId}|${sku}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
+function extractRow(raw){
+  const row=norm(raw);
+  const isNew=row['is discounted sale']!==undefined;
+  const isDiscounted=isNew&&gf(row,'is discounted sale').toLowerCase().trim()==='true';
+  const gross=pn(gf(row,'gross sales'));
+  const qty=isNew?1:(pn(gf(row,'net quantity','net items sold','quantity sold','quantity','qty'))||1);
+  const netSales=isNew?(isDiscounted?0:gross):pn(gf(row,'net sales','net revenue','subtotal'));
+  return{
+    title:gf(row,'product title','product title at time of sale','product','title'),
+    productType:gf(row,'product type','type'),vendor:gf(row,'product vendor','vendor'),
+    variant:gf(row,'product variant title','variant title','variant'),
+    discountCode:gf(row,'discount title','discount code','coupon code'),
+    qty,netSales,grossSales:gross,isDiscounted,
+  };
+}
+function deduplicateRows(rows){
+  if(!rows.length)return rows;
+  const r0=norm(rows[0]);
+  if(r0['is discounted sale']===undefined)return rows;
+  const seen=new Set();
+  return rows.filter(raw=>{
+    const row=norm(raw);
+    const orderId=(gf(row,'order name')||gf(row,'sale id')).toString().trim();
+    const sku=gf(row,'product variant sku').toString().trim();
+    if(!orderId||!sku)return true;
+    const key=`${orderId}|${sku}`;
+    if(seen.has(key))return false;
+    seen.add(key);return true;
   });
 }
-
-
 function detectStore(rows){
   const keys=new Set();
   for(const raw of rows){
     const r=extractRow(raw);
-    const vendor=r.vendor.toLowerCase().trim();
-    const title=r.title.toLowerCase().trim();
-    if(vendor && STORE_VENDOR_MAP[vendor]){ keys.add(STORE_VENDOR_MAP[vendor]); continue; }
+    const vendor=r.vendor.toLowerCase().trim(),title=r.title.toLowerCase().trim();
+    if(vendor&&STORE_VENDOR_MAP[vendor]){keys.add(STORE_VENDOR_MAP[vendor]);continue;}
     let found=false;
-    for(const[key,hints] of Object.entries(STORE_TITLE_HINTS)){
-      if(hints.some(h=>title.includes(h.toLowerCase()))){keys.add(key);found=true;break;}
-    }
-    if(!found&&(vendor||title)) keys.add("dgm");
+    for(const[key,hints]of Object.entries(STORE_TITLE_HINTS)){if(hints.some(h=>title.includes(h.toLowerCase()))){keys.add(key);found=true;break;}}
+    if(!found&&(vendor||title))keys.add("dgm");
   }
-  if(keys.size===0) return {key:null,error:"No vendor or product data found in CSV."};
-  if(keys.size===1) return {key:[...keys][0]};
+  if(keys.size===0)return{key:null,error:"No vendor or product data found."};
+  if(keys.size===1)return{key:[...keys][0]};
   const nonDgm=[...keys].filter(k=>k!=="dgm");
-  if(nonDgm.length===0) return {key:"dgm"};
-  if(nonDgm.length===1) return {key:nonDgm[0],warning:`Mixed vendors detected. Treating as ${STORES[nonDgm[0]].label}.`};
-  return {key:null,error:`Multiple stores detected: ${[...keys].map(k=>STORES[k]?.label||k).join(", ")}. Upload one store at a time.`};
+  if(nonDgm.length===0)return{key:"dgm"};
+  if(nonDgm.length===1)return{key:nonDgm[0],warning:`Mixed vendors — treating as ${STORES[nonDgm[0]].label}.`};
+  return{key:null,error:`Multiple stores detected: ${[...keys].map(k=>STORES[k]?.label||k).join(", ")}.`};
 }
 
-// ── PROCESSORS ────────────────────────────────────────────────────────────────
+// ═══ PROCESSORS ═══════════════════════════════════════════════════════════════
 function processFarmAid(rows){
-  let netSales=0,totalOrders=0;
-  const products=[];
-  for(const raw of rows){
-    const r=extractRow(raw);
-    if(!r.title) continue;
-    netSales+=r.netSales; totalOrders+=r.qty;
-    if(r.netSales>0) products.push({title:r.title,netSales:r.netSales,qty:r.qty});
-  }
-  const avgOrderValue=totalOrders>0?netSales/totalOrders:0;
-  const top5=products.sort((a,b)=>b.netSales-a.netSales).slice(0,5);
-  return {netSales,totalOrders,avgOrderValue,top5};
+  let netSales=0,totalOrders=0;const products=[];
+  for(const raw of rows){const r=extractRow(raw);if(!r.title)continue;netSales+=r.netSales;totalOrders+=r.qty;if(r.netSales>0)products.push({title:r.title,netSales:r.netSales,qty:r.qty});}
+  return{netSales,totalOrders,avgOrderValue:totalOrders>0?netSales/totalOrders:0,top5:products.sort((a,b)=>b.netSales-a.netSales).slice(0,5)};
 }
-
 function processMobyGrape(rows){
-  const cdByRecipient={},merchTotal={items:0,payout:0};
-  const details=[],unknowns=[];
+  const cdByRecipient={},merchTotal={items:0,payout:0};const details=[],unknowns=[];
   for(const raw of rows){
-    const r=extractRow(raw);
-    if(!r.title) continue;
+    const r=extractRow(raw);if(!r.title)continue;
     const ms=(r.productType+' '+r.title+' '+r.variant).toLowerCase();
     const isCD=r.productType.toLowerCase().includes('cd')||ms.includes(' cd')||ms.startsWith('cd');
     if(isCD){
-      let cdRule=null;
-      for(const rule of MG_CD_RULES){if(rule.match.some(k=>ms.includes(k.toLowerCase()))){cdRule=rule;break;}}
-      if(!cdRule){unknowns.push({title:r.title,variant:r.variant,netSales:r.netSales,qty:r.qty,note:'Unknown CD'});continue;}
-      const totalPayout=r.isDiscounted?0:r.netSales;
-      const perItem=r.qty>0?totalPayout/r.qty:0;
-      const rec=cdRule.recipient;
+      let cd=null;for(const rule of MG_CD_RULES){if(rule.match.some(k=>ms.includes(k.toLowerCase()))){cd=rule;break;}}
+      if(!cd){unknowns.push({title:r.title,variant:r.variant,netSales:r.netSales,qty:r.qty,note:'Unknown CD'});continue;}
+      const totalPayout=r.isDiscounted?0:r.netSales,perItem=r.qty>0?totalPayout/r.qty:0,rec=cd.recipient;
       if(!cdByRecipient[rec])cdByRecipient[rec]={items:0,payout:0};
-      cdByRecipient[rec].items+=r.qty;
-      cdByRecipient[rec].payout+=totalPayout;
+      cdByRecipient[rec].items+=r.qty;cdByRecipient[rec].payout+=totalPayout;
       details.push({category:'CD',recipient:rec,title:r.title,variant:r.variant,qty:r.qty,netSales:r.netSales,perItem,payout:totalPayout});
     }else{
-      const matched=bestRule(ms,MG_MERCH_RULES);
-      if(matched){
-        const totalPayout=r.isDiscounted||r.netSales<=0?0:matched.payout*r.qty;
-        const perItem=r.isDiscounted||r.netSales<=0?0:matched.payout;
-        merchTotal.items+=r.qty;
-        merchTotal.payout+=totalPayout;
-        details.push({category:'Merch',recipient:'5-way split',title:r.title,variant:r.variant,qty:r.qty,netSales:r.netSales,perItem,payout:totalPayout});
-      }else{
-        unknowns.push({title:r.title,variant:r.variant,netSales:r.netSales,qty:r.qty,note:'No matching rule'});
-      }
+      const m=bestRule(ms,MG_MERCH_RULES);
+      if(m){const tp=r.isDiscounted||r.netSales<=0?0:m.payout*r.qty,pi=r.isDiscounted||r.netSales<=0?0:m.payout;
+        merchTotal.items+=r.qty;merchTotal.payout+=tp;
+        details.push({category:'Merch',recipient:'5-way split',title:r.title,variant:r.variant,qty:r.qty,netSales:r.netSales,perItem:pi,payout:tp});
+      }else unknowns.push({title:r.title,variant:r.variant,netSales:r.netSales,qty:r.qty,note:'No matching rule'});
     }
   }
   return{cdByRecipient,merchTotal,details,unknowns};
 }
-
 function processDGM(rows){
   const orgTotals={},details=[],unknowns=[];
   for(const raw of rows){
-    const r=extractRow(raw);
-    if(!r.title&&!r.vendor) continue;
+    const r=extractRow(raw);if(!r.title&&!r.vendor)continue;
     let vendor=r.vendor;
     const isDGM=vendor.toLowerCase().includes('doing good merch')||vendor==='';
-    if(isDGM){
-      const resolved=vendorFromTitle(r.title);
-      if(resolved) vendor=resolved;
-      else{unknowns.push({title:r.title,vendor,netSales:r.netSales,qty:r.qty,note:'Could not resolve vendor from title'});continue;}
-    }
-    const orgName=canonVendor(vendor)||vendor;
-    const orgRule=DGM_ORGS[orgName];
+    if(isDGM){const res=vendorFromTitle(r.title);if(res)vendor=res;else{unknowns.push({title:r.title,vendor,netSales:r.netSales,qty:r.qty,note:'Could not resolve vendor from title'});continue;}}
+    const orgName=canonVendor(vendor)||vendor,orgRule=DGM_ORGS[orgName];
     if(!orgRule){unknowns.push({title:r.title,vendor:orgName,netSales:r.netSales,qty:r.qty,note:'Unknown org'});continue;}
-    let payout=0,rule='';
-    const ms=(r.productType+' '+r.title).toLowerCase();
+    let payout=0,rule='';const ms=(r.productType+' '+r.title).toLowerCase();
     if(orgRule.type==='none'){rule='No payout';}
     else if(r.isDiscounted){payout=0;rule='$0 (discounted sale)';}
-    else if(orgRule.type==='flat_per_item'){payout=orgRule.payout*r.qty;rule=`${orgRule.payout} × ${r.qty}`;}
+    else if(orgRule.type==='flat_per_item'){payout=orgRule.payout*r.qty;rule=`$${orgRule.payout} × ${r.qty}`;}
     else if(orgRule.type==='pct'){payout=r.netSales*orgRule.pct;rule=`${orgRule.pct*100}% of net sales`;}
-    else if(orgRule.type==='fixed'){
-      const matched=bestRule(ms,orgRule.rules)||bestRule(r.productType.toLowerCase(),orgRule.rules);
-      if(matched){payout=r.netSales<=0?0:matched.payout*r.qty;rule=`${matched.payout} × ${r.qty} (${matched.match[0]})`;}
-      else{rule='⚠️ No matching rule';unknowns.push({title:r.title,vendor:orgName,netSales:r.netSales,qty:r.qty,note:'No matching payout rule'});}
-    }
-    if(!orgTotals[orgName])orgTotals[orgName]={items:0,payout:0};
+    else if(orgRule.type==='fixed'){const m=bestRule(ms,orgRule.rules)||bestRule(r.productType.toLowerCase(),orgRule.rules);
+      if(m){payout=r.netSales<=0?0:m.payout*r.qty;rule=`$${m.payout} × ${r.qty} (${m.match[0]})`;}
+      else{rule='⚠️ No matching rule';unknowns.push({title:r.title,vendor:orgName,netSales:r.netSales,qty:r.qty,note:'No matching payout rule'});}}
+    if(!orgTotals[orgName])orgTotals[orgName]={items:0,payout:0,inactive:ARCHIVED.has(orgName)};
     orgTotals[orgName].items+=r.qty;orgTotals[orgName].payout+=payout;
     details.push({org:orgName,title:r.title,variant:r.variant,qty:r.qty,netSales:r.netSales,rule,payout});
   }
   return{orgTotals,details,unknowns};
 }
-
 function processPct(rows,cfg){
   let eligible=0,donations=0,excluded=0;const details=[];
   for(const raw of rows){
-    const r=extractRow(raw);
-    if(!r.title) continue;
-    if(cfg.type==='khan'){
-      if(r.title.toLowerCase().includes('give to khan')||r.title.toLowerCase().includes('donation')){
-        donations+=r.netSales;details.push({title:r.title,qty:r.qty,netSales:r.netSales,note:'Donation — included'});
-      }
-      continue;
-    }
-    // Exclude discounted sales
-    if(r.isDiscounted){excluded+=r.netSales;details.push({title:r.title,qty:r.qty,netSales:r.netSales,note:`Excluded (discounted sale)`});continue;}
+    const r=extractRow(raw);if(!r.title)continue;
+    if(cfg.type==='khan'){if(r.title.toLowerCase().includes('give to khan')||r.title.toLowerCase().includes('donation')){donations+=r.netSales;details.push({title:r.title,qty:r.qty,netSales:r.netSales,note:'Donation — included'});}continue;}
+    if(r.isDiscounted){excluded+=r.netSales;details.push({title:r.title,qty:r.qty,netSales:r.netSales,note:'Excluded (discounted sale)'});continue;}
     if(cfg.excludeCodes&&r.discountCode&&cfg.excludeCodes.some(c=>r.discountCode.toUpperCase().includes(c))){excluded+=r.netSales;details.push({title:r.title,qty:r.qty,netSales:r.netSales,note:`Excluded (code: ${r.discountCode})`});continue;}
     if(cfg.includeDonations&&(r.title.toLowerCase().includes('donation')||r.title.toLowerCase().includes('donate'))){donations+=r.netSales;details.push({title:r.title,qty:r.qty,netSales:r.netSales,note:'Donation — 100% included'});continue;}
     eligible+=r.netSales;details.push({title:r.title,qty:r.qty,netSales:r.netSales,note:`${cfg.pct*100}% of net sales`});
   }
   return{eligible,donations,excluded,payout:(eligible*(cfg.pct||0))+donations,details};
 }
-
 function processFixed(rows,cfg){
   let total=0;const details=[],unknowns=[];
   for(const raw of rows){
-    const r=extractRow(raw);
-    if(!r.title) continue;
+    const r=extractRow(raw);if(!r.title)continue;
     const ms=(r.productType+' '+r.title).toLowerCase();
-    let matched=bestRule(ms,cfg.rules);
-    if(!matched){const pt=r.productType.toLowerCase().trim();for(const rule of cfg.rules){if(rule.match.some(k=>k.toLowerCase()===pt)){matched={...rule,_klen:0};break;}}}
-    if(!matched){const pt=r.productType.toLowerCase().trim();for(const rule of cfg.rules){if(rule.match.some(k=>pt.includes(k.toLowerCase())||k.toLowerCase().includes(pt))){matched={...rule,_klen:0};break;}}}
-    if(matched){
-      const discounted=r.isDiscounted||r.netSales<=0;
-      const p=discounted?0:matched.payout*r.qty;
-      const pi=discounted?0:matched.payout;
-      total+=p;
-      const noteExtra=r.isDiscounted?' — $0 (discounted sale)':r.netSales<=0?' — $0 (returned/refunded)':'';
-      details.push({title:r.title,qty:r.qty,netSales:r.netSales,payout:p,perItem:pi,note:`${matched.payout} × ${r.qty} (${matched.match[0]})${matched.payout===0?' — $0 payout':''}${noteExtra}`});
-    }else{
-      unknowns.push({title:r.title,qty:r.qty,netSales:r.netSales});
-      details.push({title:r.title,qty:r.qty,netSales:r.netSales,payout:0,perItem:0,note:'⚠️ No matching rule'});
-    }
+    let m=bestRule(ms,cfg.rules);
+    if(!m){const pt=r.productType.toLowerCase().trim();for(const rule of cfg.rules){if(rule.match.some(k=>k.toLowerCase()===pt)){m={...rule,_klen:0};break;}}}
+    if(!m){const pt=r.productType.toLowerCase().trim();for(const rule of cfg.rules){if(rule.match.some(k=>pt.includes(k.toLowerCase())||k.toLowerCase().includes(pt))){m={...rule,_klen:0};break;}}}
+    if(m){const disc=r.isDiscounted||r.netSales<=0,p=disc?0:m.payout*r.qty,pi=disc?0:m.payout;total+=p;
+      const nx=r.isDiscounted?' — $0 (discounted)':r.netSales<=0?' — $0 (returned)':'';
+      details.push({title:r.title,qty:r.qty,netSales:r.netSales,payout:p,perItem:pi,note:`$${m.payout} × ${r.qty} (${m.match[0]})${m.payout===0?' — $0':''}${nx}`});
+    }else{unknowns.push({title:r.title,qty:r.qty,netSales:r.netSales});details.push({title:r.title,qty:r.qty,netSales:r.netSales,payout:0,perItem:0,note:'⚠️ No matching rule'});}
   }
   return{total,details,unknowns};
 }
 
-// ── EXCEL EXPORTS ─────────────────────────────────────────────────────────────
-function exportFarmAid(result,month,sessions,convRate){
-  const wb=XLSX.utils.book_new();
-  const fmt=v=>Number(v).toFixed(2);
-  const rows=[
-    ["Farm Aid Monthly Report",month||""],[""],
-    ["Metric","Value"],
-    ["Total Monthly Net Sales",result.netSales],
-    ["Online Store Sessions",sessions||"—"],
-    ["Conversion Rate",convRate?convRate+"%":"—"],
-    ["Total No. of Orders",result.totalOrders],
-    ["Avg Order Value",Number(result.avgOrderValue.toFixed(2))],
-    [""],["Top 5 Products by Revenue","Net Sales"],
-  ];
-  result.top5.forEach((p,i)=>rows.push([`${i+1}. ${p.title}`,p.netSales]));
-  const ws=XLSX.utils.aoa_to_sheet(rows);
-  ws["!cols"]=[{wch:42},{wch:18}];
-  XLSX.utils.book_append_sheet(wb,ws,month||"Monthly Report");
-  XLSX.writeFile(wb,`FarmAid_${(month||"Report").replace(/\s+/g,"_")}.xlsx`);
-}
+// ═══ SLOT UI ══════════════════════════════════════════════════════════════════
+const SLOT_LABELS={
+  majority:'The Majority Report',
+  amnesty:'Amnesty International USA',
+  caritas:'Caritas of Austin',
+  khan:'Khan Academy',
+  naeh:'National Alliance to End Homelessness',
+  mobygrape:'Moby Grape',
+  dgm:'Doing Good Merch (all collections)',
+  farmaid:'Farm Aid (monthly sales summary)',
+};
+const QUARTERLY_KEYS=['majority','amnesty','caritas','khan','naeh','mobygrape','dgm'];
+const MONTHLY_KEYS=['farmaid'];
+const ARCHIVED_STORES=new Set(['toscani']); // standalone stores no longer processed
+function activeSlotKeys(){ return periodType==='quarter'?QUARTERLY_KEYS:MONTHLY_KEYS; }
+const slotData={}; // key -> {rows, fileName}
 
-function exportMobyGrape(result){
-  const wb=XLSX.utils.book_new();
-  const sum=[["Recipient","Items","Payout","Notes"]];
-  Object.entries(result.cdByRecipient).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([rec,d])=>{
-    sum.push([rec,d.items,d.payout,"CD sales"]);
+function renderSlots(){
+  const keys=activeSlotKeys();
+  Object.keys(slotData).forEach(k=>{if(!keys.includes(k))delete slotData[k];});
+  const wrap=document.getElementById('slotList');
+  wrap.innerHTML=`
+    <div class="sortbox" id="sortBox">
+      <input type="file" id="sortInput" accept=".csv" multiple>
+      <strong>⬇️ Drop all your CSVs here to auto-sort</strong>
+      <div class="hint" style="margin-top:4px">The tool detects each store and routes it to the right slot below — or use the individual slots.</div>
+    </div>
+    <div class="sortlog" id="sortLog"></div>
+  `+keys.map(k=>`
+    <div class="slot">
+      <div class="nm">${SLOT_LABELS[k]}</div>
+      <div class="up"><div class="drop" id="drop-${k}"><input type="file" id="inp-${k}" accept=".csv"><span>Click or drag CSV</span></div></div>
+      <div class="stat" id="stat-${k}"></div>
+    </div>`).join('');
+  const sb=document.getElementById('sortBox'),si=document.getElementById('sortInput');
+  sb.addEventListener('click',()=>si.click());
+  si.addEventListener('change',e=>handleMultiFiles(e.target.files));
+  sb.addEventListener('dragover',e=>{e.preventDefault();sb.classList.add('drag');});
+  sb.addEventListener('dragleave',()=>sb.classList.remove('drag'));
+  sb.addEventListener('drop',e=>{e.preventDefault();sb.classList.remove('drag');handleMultiFiles(e.dataTransfer.files);});
+  keys.forEach(k=>{
+    const drop=document.getElementById('drop-'+k),inp=document.getElementById('inp-'+k);
+    drop.addEventListener('click',()=>inp.click());
+    inp.addEventListener('change',e=>handleSlotFile(k,e.target.files[0]));
+    drop.addEventListener('dragover',e=>{e.preventDefault();drop.classList.add('drag');});
+    drop.addEventListener('dragleave',()=>drop.classList.remove('drag'));
+    drop.addEventListener('drop',e=>{e.preventDefault();drop.classList.remove('drag');handleSlotFile(k,e.dataTransfer.files[0]);});
+    if(slotData[k]){const st=document.getElementById('stat-'+k);st.className='stat ok';st.innerHTML=`✅ ${slotData[k].fileName}<br><span class="mono">${quickPayout(k,slotData[k].rows)}</span>`;}
   });
-  sum.push(["","","",""]);
-  const perPerson=result.merchTotal.payout/5;
-  sum.push(["Merch Pool (5-way split)",result.merchTotal.items,result.merchTotal.payout,"Split between: "+MG_MERCH_MEMBERS.join(", ")]);
-  MG_MERCH_MEMBERS.forEach(m=>sum.push(["  → "+m,"",perPerson,"1/5 of merch pool"]));
-  sum.push(["","","",""]);
-  const grand=Object.values(result.cdByRecipient).reduce((s,d)=>s+d.payout,0)+result.merchTotal.payout;
-  sum.push(["TOTAL PAYOUTS","",grand,""]);
-  const ws1=XLSX.utils.aoa_to_sheet(sum);ws1["!cols"]=[{wch:36},{wch:10},{wch:12},{wch:52}];
-  XLSX.utils.book_append_sheet(wb,ws1,"Payout Summary");
-  const det=[["Category","Recipient","Product Title","Variant","Qty","Net Sales","Payout Per Item","Total Payout"]];
-  result.details.forEach(d=>det.push([d.category,d.recipient,d.title,d.variant||"",d.qty,d.netSales,d.perItem,d.payout]));
-  const ws2=XLSX.utils.aoa_to_sheet(det);ws2["!cols"]=[{wch:8},{wch:22},{wch:48},{wch:18},{wch:6},{wch:12},{wch:16},{wch:14}];
-  XLSX.utils.book_append_sheet(wb,ws2,"Sales Detail");
-  if(result.unknowns.length){
-    const ud=[["Product Title","Variant","Net Sales","Qty","Note"]];
-    result.unknowns.forEach(u=>ud.push([u.title,u.variant||"",u.netSales,u.qty,u.note||""]));
-    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(ud),"Needs Review");
+}
+
+async function handleMultiFiles(files){
+  const log=document.getElementById('sortLog');
+  const keys=activeSlotKeys();
+  for(const file of Array.from(files)){
+    if(!file.name.toLowerCase().endsWith('.csv'))continue;
+    try{
+      let rows=await parseCSV(file);rows=deduplicateRows(rows);
+      const det=detectStore(rows);
+      if(det.error){log.innerHTML+=`<span class="stat err">❌ ${file.name}: ${det.error}</span>`;continue;}
+      if(ARCHIVED_STORES.has(det.key)){log.innerHTML+=`<span class="stat warn">⚠️ ${file.name}: ${STORES[det.key].label} is archived — skipped.</span>`;continue;}
+      if(!keys.includes(det.key)){log.innerHTML+=`<span class="stat warn">⚠️ ${file.name}: ${STORES[det.key]?.label||det.key} isn't part of this ${periodType==='quarter'?'quarterly':'monthly'} run — skipped.</span>`;continue;}
+      slotData[det.key]={rows,fileName:file.name};
+      const st=document.getElementById('stat-'+det.key);
+      st.className='stat ok';st.innerHTML=`✅ ${file.name}<br><span class="mono">${quickPayout(det.key,rows)}</span>`;
+      log.innerHTML+=`<span class="stat ok">✅ ${file.name} → ${STORES[det.key].label}</span>`;
+    }catch(e){log.innerHTML+=`<span class="stat err">❌ ${file.name}: ${e.message}</span>`;}
   }
-  XLSX.writeFile(wb,"Moby_Grape_Payout_Report.xlsx");
 }
 
-function exportDGM(label,orgTotals,details,unknowns){
-  const wb=XLSX.utils.book_new();
-  const sum=[["Organization","Items Sold","Payout"]];
-  let tp=0,ti=0;
-  Object.entries(orgTotals).sort((a,b)=>b[1].payout-a[1].payout).forEach(([o,d])=>{sum.push([o,d.items,d.payout]);tp+=d.payout;ti+=d.items;});
-  sum.push(["TOTAL",ti,tp]);
-  const ws1=XLSX.utils.aoa_to_sheet(sum);ws1["!cols"]=[{wch:44},{wch:12},{wch:12}];
-  XLSX.utils.book_append_sheet(wb,ws1,"Payout Summary");
-  const det=[["Organization","Product Title","Variant","Qty","Net Sales","Payout Per Item","Total Payout","Rule"]];
-  details.forEach(d=>{const pi=d.qty>0?d.payout/d.qty:0;det.push([d.org,d.title,d.variant,d.qty,d.netSales,pi,d.payout,d.rule]);});
-  const ws2=XLSX.utils.aoa_to_sheet(det);ws2["!cols"]=[{wch:40},{wch:42},{wch:18},{wch:6},{wch:12},{wch:16},{wch:14},{wch:32}];
-  XLSX.utils.book_append_sheet(wb,ws2,"Sales Detail");
-  if(unknowns.length){const ud=[["Product Title","Vendor","Net Sales","Qty","Note"]];unknowns.forEach(u=>ud.push([u.title,u.vendor||"",u.netSales,u.qty,u.note||""]));XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(ud),"Needs Review");}
-  XLSX.writeFile(wb,`${label.replace(/\s+/g,"_")}_Payout_Report.xlsx`);
-}
-
-function exportGeneric(label,result,cfg){
-  const wb=XLSX.utils.book_new();
-  const fee=cfg.monthlyFee?cfg.monthlyFee*MONTHS:0;
-  let sumRows=[];
-  if(cfg.type==="khan"){
-    sumRows=[["Donations (Give to Khan Academy)",result.donations],["NET PAYOUT",result.donations]];
-  }else if(cfg.type==="pct"){
-    sumRows=[["Eligible Net Sales",result.eligible],[`Payout (${cfg.pct*100}%)`,result.eligible*(cfg.pct||0)]];
-    if(cfg.includeDonations)sumRows.push(["Donations (100%)",result.donations]);
-    sumRows.push(["Excluded (discount codes)",result.excluded]);
-    if(cfg.monthlyFee)sumRows.push([`Platform Fee (${MONTHS} mo × $${cfg.monthlyFee})`,fee],["",""]);
-    sumRows.push(["NET PAYOUT",result.payout-fee]);
-  }else if(cfg.type==="fixed_store"){
-    sumRows=[["Gross Payout",result.total]];
-    if(cfg.monthlyFee)sumRows.push([`Platform Fee (${MONTHS} mo × $${cfg.monthlyFee})`,fee]);
-    sumRows.push(["NET PAYOUT",result.total-fee]);
-    if(cfg.recipient)sumRows.push(["",""],["Payable To",cfg.recipient]);
-  }
-  const ws1=XLSX.utils.aoa_to_sheet(sumRows);ws1["!cols"]=[{wch:40},{wch:16}];
-  XLSX.utils.book_append_sheet(wb,ws1,"Payout Summary");
-  const det=[["Product Title","Qty","Net Sales","Payout Per Item","Total Payout","Note"]];
-  (result.details||[]).forEach(d=>{const pi=d.perItem!=null?d.perItem:(d.qty>0?(d.payout||0)/d.qty:0);det.push([d.title,d.qty,d.netSales,pi,d.payout||0,d.note||""]);});
-  const ws2=XLSX.utils.aoa_to_sheet(det);ws2["!cols"]=[{wch:44},{wch:6},{wch:12},{wch:16},{wch:14},{wch:42}];
-  XLSX.utils.book_append_sheet(wb,ws2,"Sales Detail");
-  XLSX.writeFile(wb,`${label.replace(/\s+/g,"_")}_Payout_Report.xlsx`);
-}
-
-// ── SHIPSTATION ───────────────────────────────────────────────────────────────
-let ssWebFile=null, ssManualFile=null;
-
-function setupSSDrop(dropId, inputId, which, labelId){
-  const drop=document.getElementById(dropId);
-  const input=document.getElementById(inputId);
-  const setFile=f=>{
-    if(which==="web") ssWebFile=f; else ssManualFile=f;
-    document.getElementById(labelId).textContent=f?`✅ ${f.name}`:"";
-    checkSSReady();
-  };
-  drop.addEventListener("click",()=>input.click());
-  input.addEventListener("change",e=>setFile(e.target.files[0]||null));
-  drop.addEventListener("dragover",e=>{e.preventDefault();drop.classList.add("drag");});
-  drop.addEventListener("dragleave",()=>drop.classList.remove("drag"));
-  drop.addEventListener("drop",e=>{e.preventDefault();drop.classList.remove("drag");setFile(e.dataTransfer.files[0]||null);});
-}
-
-function checkSSReady(){
-  document.getElementById("ssRunBtn").disabled=!(ssWebFile||ssManualFile);
-}
-
-function processShipStation(rows){
-  let orders=0,items=0,paid=0,cost=0;
-  for(const raw of rows){
-    const row=norm(raw);
-    orders++;
-    items+=pn(gf(row,"items"));
-    paid+=pn(gf(row,"shipping paid"));
-    cost+=pn(gf(row,"shipping cost"));
-  }
-  return{orders,items,paid,cost,net:paid-cost};
-}
-
-async function runShippingReport(){
-  const btn=document.getElementById("ssRunBtn");
-  const status=document.getElementById("ssStatus");
-  const res=document.getElementById("ssResults");
-  btn.disabled=true; status.textContent="Processing…"; res.innerHTML="";
+async function handleSlotFile(slotKey,file){
+  if(!file)return;
+  const statEl=document.getElementById('stat-'+slotKey);
+  statEl.className='stat';statEl.textContent='⏳ Reading…';
   try{
-    const month=document.getElementById("ss-month").value||"";
-    let webShip=null, manualShip=null;
-    if(ssWebFile){const r=await parseCSV(ssWebFile);webShip=processShipStation(r);}
-    if(ssManualFile){const r=await parseCSV(ssManualFile);manualShip=processShipStation(r);}
-    const fmt=v=>"$"+Number(v).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
-    const tot={
-      orders:(webShip?.orders||0)+(manualShip?.orders||0),
-      items:(webShip?.items||0)+(manualShip?.items||0),
-      paid:(webShip?.paid||0)+(manualShip?.paid||0),
-      cost:(webShip?.cost||0)+(manualShip?.cost||0),
-      net:(webShip?.net||0)+(manualShip?.net||0),
-    };
-    let html=`<div class="rb"><h3>Shipping Summary${month?" — "+month:""}</h3><table>
-      <tr><th></th><th>Orders</th><th>Items</th><th>Shipping Paid</th><th>Shipping Cost</th><th>Net (+/-)</th></tr>`;
-    if(webShip)    html+=`<tr><td>Web Store Orders</td><td>${webShip.orders}</td><td>${webShip.items}</td><td>${fmt(webShip.paid)}</td><td>${fmt(webShip.cost)}</td><td>${fmt(webShip.net)}</td></tr>`;
-    if(manualShip) html+=`<tr><td>Manual Orders</td><td>${manualShip.orders}</td><td>${manualShip.items}</td><td>${fmt(manualShip.paid)}</td><td>${fmt(manualShip.cost)}</td><td>${fmt(manualShip.net)}</td></tr>`;
-    html+=`<tr><td>TOTAL</td><td>${tot.orders}</td><td>${tot.items}</td><td>${fmt(tot.paid)}</td><td>${fmt(tot.cost)}</td><td>${fmt(tot.net)}</td></tr></table></div>`;
-    html+=`<div class="drow"><button class="btn btn-p" onclick="exportShipping(window._ssWeb,window._ssManual,'${month}')">⬇️ Download Shipping Report</button></div>`;
-    window._ssWeb=webShip; window._ssManual=manualShip;
-    res.innerHTML=html;
-    status.textContent="✅ Shipping report generated!";
-  }catch(e){
-    status.textContent="❌ Error: "+e.message;
-    console.error(e);
-  }
-  btn.disabled=false;
-}
-
-function exportShipping(webResult,manualResult,month){
-  const wb=XLSX.utils.book_new();
-  const rows=[
-    ["","Orders","Items Shipped","Shipping Paid","Shipping Cost","Net (+/-)"],
-    ["Web Store Orders", webResult?.orders||0, webResult?.items||0, webResult?.paid||0, webResult?.cost||0, webResult?.net||0],
-    ["Manual Orders",   manualResult?.orders||0, manualResult?.items||0, manualResult?.paid||0, manualResult?.cost||0, manualResult?.net||0],
-    [""],
-    ["TOTAL",
-      (webResult?.orders||0)+(manualResult?.orders||0),
-      (webResult?.items||0)+(manualResult?.items||0),
-      (webResult?.paid||0)+(manualResult?.paid||0),
-      (webResult?.cost||0)+(manualResult?.cost||0),
-      (webResult?.net||0)+(manualResult?.net||0),
-    ],
-  ];
-  const ws=XLSX.utils.aoa_to_sheet(rows);
-  ws["!cols"]=[{wch:22},{wch:10},{wch:14},{wch:16},{wch:16},{wch:12}];
-  XLSX.utils.book_append_sheet(wb,ws,"Shipping Summary");
-  XLSX.writeFile(wb,`FarmAid_Shipping_${(month||"Report").replace(/\s+/g,"_")}.xlsx`);
-}
-
-
-let files=[],detectedKey=null,parsedRows=[];
-
-setupSSDrop("ssWebDrop","ssWebInput","web","ssWebFile");
-setupSSDrop("ssManualDrop","ssManualInput","manual","ssManualFile");
-
-const dz=document.getElementById("dropZone"),fi=document.getElementById("fileInput");
-dz.addEventListener("click",()=>fi.click());
-fi.addEventListener("change",e=>addFiles(e.target.files));
-dz.addEventListener("dragover",e=>{e.preventDefault();dz.classList.add("drag");});
-dz.addEventListener("dragleave",()=>dz.classList.remove("drag"));
-dz.addEventListener("drop",e=>{e.preventDefault();dz.classList.remove("drag");addFiles(e.dataTransfer.files);});
-
-function addFiles(fs){
-  Array.from(fs).forEach(f=>{if(f.name.endsWith(".csv")&&!files.find(x=>x.name===f.name))files.push(f);});
-  renderFiles();
-}
-function removeFile(i){files.splice(i,1);renderFiles();}
-function renderFiles(){
-  document.getElementById("fileList").innerHTML=files.map((f,i)=>
-    `<div class="fi">📄 ${f.name} <span class="rm" onclick="removeFile(${i})">✕</span></div>`
-  ).join("");
-  if(files.length) analyzeFiles();
-  else{document.getElementById("detectedStore").innerHTML="";document.getElementById("farmaidInputs").style.display="none";document.getElementById("runBtn").disabled=true;}
-}
-
-async function analyzeFiles(){
-  document.getElementById("detectedStore").innerHTML=`<div class="detected ok"><span class="icon">⏳</span> Reading files…</div>`;
-  document.getElementById("farmaidInputs").style.display="none";
-  document.getElementById("runBtn").disabled=true;
-  parsedRows=[];
-  for(const f of files){const r=await parseCSV(f);parsedRows=parsedRows.concat(r);}
-  const{key,error,warning}=detectStore(parsedRows);
-  detectedKey=key;
-  const el=document.getElementById("detectedStore");
-  if(error){
-    el.innerHTML=`<div class="detected err"><span class="icon">❌</span> ${error}</div>`;
-    return;
-  }
-  const label=STORES[key].label;
-  const warnPart=warning?`<br><small style="opacity:.8">⚠️ ${warning}</small>`:"";
-  el.innerHTML=`<div class="detected ok"><span class="icon">✅</span> Detected store: <strong>${label}</strong>${warnPart}</div>`;
-  if(key==="farmaid") document.getElementById("farmaidInputs").style.display="block";
-  document.getElementById("runBtn").disabled=false;
-}
-
-// ── MAIN ──────────────────────────────────────────────────────────────────────
-async function runReport(){
-  const btn=document.getElementById("runBtn");
-  const status=document.getElementById("status");
-  const res=document.getElementById("results");
-  btn.disabled=true;status.textContent="Processing…";res.innerHTML="";
-  try{
-    const cfg=STORES[detectedKey];
-    const label=cfg.label;
-    const rows=deduplicateRows(parsedRows);
-    const fmt=v=>"$"+Number(v).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
-    const fmtN=v=>v?Number(v).toLocaleString("en-US"):"—";
-    let html="";
-
-    if(cfg.type==="farmaid"){
-      const month=document.getElementById("fa-month").value||"";
-      const sessions=document.getElementById("fa-sessions").value||null;
-      const convRate=document.getElementById("fa-conversion").value||null;
-      const result=processFarmAid(parsedRows);
-      html+=`<div class="rb"><h3>📊 Farm Aid Monthly Report${month?" — "+month:""}</h3><table>
-        <tr><th>Metric</th><th>Value</th></tr>
-        <tr><td>Total Monthly Net Sales</td><td>${fmt(result.netSales)}</td></tr>
-        <tr><td>Online Store Sessions</td><td>${fmtN(sessions)}</td></tr>
-        <tr><td>Conversion Rate</td><td>${convRate?convRate+"%":"—"}</td></tr>
-        <tr><td>Total No. of Orders</td><td>${fmtN(result.totalOrders)}</td></tr>
-        <tr><td>Avg Order Value</td><td>${fmt(result.avgOrderValue)}</td></tr>
-      </table></div>`;
-      html+=`<div class="rb"><h3>🏆 Top 5 Products by Revenue</h3><table><tr><th>#</th><th>Product</th><th>Net Sales</th></tr>`;
-      result.top5.forEach((p,i)=>html+=`<tr><td>${i+1}</td><td>${p.title}</td><td>${fmt(p.netSales)}</td></tr>`);
-      html+=`</table></div>`;
-      html+=`<div class="drow"><button class="btn btn-p" onclick="exportFarmAid(window._r,'${month}',${sessions||null},${convRate||null})">⬇️ Download Excel Report</button></div>`;
-      window._r=result;
-
-    }else if(cfg.type==="moby_grape"){
-      const result=processMobyGrape(parsedRows);
-      const perPerson=result.merchTotal.payout/5;
-      const grand=Object.values(result.cdByRecipient).reduce((s,d)=>s+d.payout,0)+result.merchTotal.payout;
-      html+=`<div class="rb"><h3>CD Payout Summary</h3><table><tr><th>Recipient</th><th>Items Sold</th><th>Payout</th></tr>`;
-      Object.entries(result.cdByRecipient).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([rec,d])=>{
-        const note=rec==="Jan Lewis"?" — 690 Grape Ave, Sunnyvale, CA 94087":"";
-        html+=`<tr><td>${rec}${note}</td><td>${d.items}</td><td>${fmt(d.payout)}</td></tr>`;
-      });
-      html+=`</table></div>`;
-      html+=`<div class="rb"><h3>Merch Payout Summary — 5-Way Split</h3><table><tr><th>Item</th><th>Amount</th></tr>
-        <tr><td>Total Merch Payout Pool</td><td>${fmt(result.merchTotal.payout)}</td></tr>`;
-      MG_MERCH_MEMBERS.forEach(m=>html+=`<tr><td style="padding-left:20px">→ ${m}</td><td>${fmt(perPerson)}</td></tr>`);
-      html+=`<tr><td><strong>GRAND TOTAL</strong></td><td><strong>${fmt(grand)}</strong></td></tr></table></div>`;
-      const cdDetails=result.details.filter(d=>d.category==="CD");
-      const cdByRec={};
-      cdDetails.forEach(d=>{if(!cdByRec[d.recipient])cdByRec[d.recipient]=[];cdByRec[d.recipient].push(d);});
-      Object.keys(cdByRec).sort().forEach(rec=>{
-        const rows=cdByRec[rec].slice().sort((a,b)=>a.title.localeCompare(b.title));
-        const total=rows.reduce((s,d)=>s+d.payout,0);
-        html+=`<div class="rb"><h3>CDs — ${rec} (${fmt(total)})</h3><table><tr><th>Product</th><th>Variant</th><th>Qty</th><th>Net Sales</th><th>Per Item</th><th>Total Payout</th></tr>`;
-        rows.forEach(d=>html+=`<tr><td>${d.title}</td><td>${d.variant||""}</td><td>${d.qty}</td><td>${fmt(d.netSales)}</td><td>${fmt(d.perItem)}</td><td>${fmt(d.payout)}</td></tr>`);
-        html+=`</table></div>`;
-      });
-      const merchDet=result.details.filter(d=>d.category==="Merch").slice().sort((a,b)=>a.title.localeCompare(b.title));
-      if(merchDet.length){
-        html+=`<div class="rb"><h3>Merch Detail</h3><table><tr><th>Product</th><th>Qty</th><th>Net Sales</th><th>Per Item</th><th>Total Payout</th></tr>`;
-        merchDet.forEach(d=>html+=`<tr><td>${d.title}</td><td>${d.qty}</td><td>${fmt(d.netSales)}</td><td>${fmt(d.perItem)}</td><td>${fmt(d.payout)}</td></tr>`);
-        html+=`</table></div>`;
-      }
-      if(result.unknowns.length){html+=`<div class="warn-box">⚠️ <strong>${result.unknowns.length} row(s) need review:</strong><ul>`;result.unknowns.forEach(u=>html+=`<li>"${u.title}"${u.variant?" ("+u.variant+")":""} — ${u.note||""}</li>`);html+=`</ul></div>`;}
-      html+=`<div class="drow"><button class="btn btn-p" onclick="exportMobyGrape(window._r)">⬇️ Download Excel Report</button></div>`;
-      window._r=result;
-
-    }else if(cfg.type==="dgm"){
-      const{orgTotals,details,unknowns}=processDGM(parsedRows);
-      let tp=0,ti=0;
-      html+=`<div class="rb"><h3>Payout Summary — ${label}</h3><table><tr><th>Organization</th><th>Items Sold</th><th>Payout</th></tr>`;
-      Object.entries(orgTotals).sort((a,b)=>b[1].payout-a[1].payout).forEach(([o,d])=>{tp+=d.payout;ti+=d.items;html+=`<tr><td>${o}</td><td>${d.items}</td><td>${fmt(d.payout)}</td></tr>`;});
-      html+=`<tr><td>TOTAL</td><td>${ti}</td><td>${fmt(tp)}</td></tr></table></div>`;
-      const byOrg={};
-      details.forEach(d=>{if(!byOrg[d.org])byOrg[d.org]=[];byOrg[d.org].push(d);});
-      Object.keys(byOrg).sort().forEach(org=>{
-        const rows=byOrg[org].slice().sort((a,b)=>a.title.localeCompare(b.title));
-        const orgPayout=rows.reduce((s,d)=>s+d.payout,0);
-        html+=`<div class="rb"><h3>${org} — ${fmt(orgPayout)}</h3><table><tr><th>Product</th><th>Qty</th><th>Net Sales</th><th>Per Item</th><th>Total Payout</th><th>Rule</th></tr>`;
-        rows.forEach(d=>{const pi=d.qty>0?d.payout/d.qty:0;html+=`<tr><td>${d.title}${d.variant&&d.variant!=="Default Title"?" — "+d.variant:""}</td><td>${d.qty}</td><td>${fmt(d.netSales)}</td><td>${fmt(pi)}</td><td>${fmt(d.payout)}</td><td style="color:#666;font-size:.8rem">${d.rule}</td></tr>`;});
-        html+=`</table></div>`;
-      });
-      if(unknowns.length){html+=`<div class="warn-box">⚠️ <strong>${unknowns.length} row(s) need review:</strong><ul>`;unknowns.forEach(u=>html+=`<li>"${u.title}" (vendor: ${u.vendor||"unknown"})${u.note?" — "+u.note:""}</li>`);html+=`</ul></div>`;}
-      html+=`<div class="drow"><button class="btn btn-p" onclick="exportDGM('${label.replace(/'/g,"\\'")}',window._r.orgTotals,window._r.details,window._r.unknowns)">⬇️ Download Excel Report</button></div>`;
-      window._r={orgTotals,details,unknowns};
-
-    }else if(cfg.type==="khan"){
-      const result=processPct(parsedRows,cfg);
-      html+=`<div class="rb"><h3>Payout Summary — ${label}</h3><table><tr><th>Item</th><th>Amount</th></tr>
-        <tr><td>Total Donations</td><td>${fmt(result.donations)}</td></tr>
-        <tr><td>NET PAYOUT</td><td>${fmt(result.donations)}</td></tr></table></div>`;
-      const sorted=result.details.slice().sort((a,b)=>a.title.localeCompare(b.title));
-      html+=`<div class="rb"><h3>Sales Detail</h3><table><tr><th>Product</th><th>Qty</th><th>Net Sales</th><th>Note</th></tr>`;
-      sorted.forEach(d=>html+=`<tr><td>${d.title}</td><td>${d.qty}</td><td>${fmt(d.netSales)}</td><td style="color:#666;font-size:.8rem">${d.note}</td></tr>`);
-      html+=`</table></div><div class="drow"><button class="btn btn-p" onclick="exportGeneric('${label.replace(/'/g,"\\'")}',window._r,window._rc)">⬇️ Download Excel Report</button></div>`;
-      window._r=result;window._rc=cfg;
-
-    }else if(cfg.type==="pct"){
-      const result=processPct(parsedRows,cfg);
-      const fee=cfg.monthlyFee?cfg.monthlyFee*MONTHS:0;
-      const net=result.payout-fee;
-      html+=`<div class="rb"><h3>Payout Summary — ${label}</h3><table><tr><th>Item</th><th>Amount</th></tr>
-        <tr><td>Eligible Net Sales</td><td>${fmt(result.eligible)}</td></tr>
-        <tr><td>Payout (${cfg.pct*100}%)</td><td>${fmt(result.eligible*cfg.pct)}</td></tr>`;
-      if(cfg.includeDonations)html+=`<tr><td>Donations (100%)</td><td>${fmt(result.donations)}</td></tr>`;
-      html+=`<tr><td>Excluded (discount codes)</td><td>${fmt(result.excluded)}</td></tr>`;
-      if(cfg.monthlyFee)html+=`<tr><td>Platform Fee (${MONTHS} mo × $${cfg.monthlyFee})</td><td>-${fmt(fee)}</td></tr>`;
-      html+=`<tr><td>NET PAYOUT</td><td>${fmt(net)}</td></tr></table></div>`;
-      const sorted=result.details.slice().sort((a,b)=>a.title.localeCompare(b.title));
-      html+=`<div class="rb"><h3>Sales Detail</h3><table><tr><th>Product</th><th>Qty</th><th>Net Sales</th><th>Note</th></tr>`;
-      sorted.forEach(d=>html+=`<tr><td>${d.title}</td><td>${d.qty}</td><td>${fmt(d.netSales)}</td><td style="color:#666;font-size:.8rem">${d.note}</td></tr>`);
-      html+=`</table></div><div class="drow"><button class="btn btn-p" onclick="exportGeneric('${label.replace(/'/g,"\\'")}',window._r,window._rc)">⬇️ Download Excel Report</button></div>`;
-      window._r=result;window._rc=cfg;
-
-    }else if(cfg.type==="fixed_store"){
-      const result=processFixed(parsedRows,cfg);
-      const fee=cfg.monthlyFee?cfg.monthlyFee*MONTHS:0;
-      const net=result.total-fee;
-      html+=`<div class="rb"><h3>Payout Summary — ${label}</h3><table><tr><th>Item</th><th>Amount</th></tr>
-        <tr><td>Gross Payout (fixed per-item)</td><td>${fmt(result.total)}</td></tr>`;
-      if(cfg.monthlyFee)html+=`<tr><td>Platform Fee (${MONTHS} mo × $${cfg.monthlyFee})</td><td>-${fmt(fee)}</td></tr>`;
-      html+=`<tr><td>NET PAYOUT</td><td>${fmt(net)}</td></tr></table></div>`;
-      if(cfg.recipient)html+=`<p class="note" style="margin-bottom:12px">💳 Checks payable to: <strong>${cfg.recipient}</strong></p>`;
-      const sorted=result.details.slice().sort((a,b)=>a.title.localeCompare(b.title));
-      html+=`<div class="rb"><h3>Sales Detail</h3><table><tr><th>Product</th><th>Qty</th><th>Net Sales</th><th>Per Item</th><th>Total Payout</th><th>Rule</th></tr>`;
-      sorted.forEach(d=>html+=`<tr><td>${d.title}</td><td>${d.qty}</td><td>${fmt(d.netSales)}</td><td>${fmt(d.perItem||0)}</td><td>${fmt(d.payout||0)}</td><td style="color:#666;font-size:.8rem">${d.note}</td></tr>`);
-      html+=`</table></div>`;
-      if(result.unknowns.length){html+=`<div class="warn-box">⚠️ <strong>${result.unknowns.length} product(s) had no matching payout rule:</strong><ul>`;result.unknowns.forEach(u=>html+=`<li>"${u.title}" (qty: ${u.qty})</li>`);html+=`</ul></div>`;}
-      html+=`<div class="drow"><button class="btn btn-p" onclick="exportGeneric('${label.replace(/'/g,"\\'")}',window._r,window._rc)">⬇️ Download Excel Report</button></div>`;
-      window._r=result;window._rc=cfg;
+    let rows=await parseCSV(file);
+    rows=deduplicateRows(rows);
+    const det=detectStore(rows);
+    if(det.error){statEl.className='stat err';statEl.textContent='❌ '+det.error;delete slotData[slotKey];return;}
+    if(det.key!==slotKey){
+      statEl.className='stat warn';
+      statEl.innerHTML=`⚠️ This looks like <strong>${STORES[det.key].label}</strong>, not ${STORES[slotKey].label}. Not loaded.`;
+      delete slotData[slotKey];return;
     }
+    slotData[slotKey]={rows,fileName:file.name};
+    // quick payout preview
+    const preview=quickPayout(slotKey,rows);
+    statEl.className='stat ok';
+    statEl.innerHTML=`✅ ${file.name}<br><span class="mono">${preview}</span>`;
+  }catch(e){statEl.className='stat err';statEl.textContent='❌ '+e.message;}
+}
 
-    res.innerHTML=html;
-    status.textContent="✅ Report generated!";
-  }catch(e){
-    status.textContent="❌ Error: "+e.message;
-    console.error(e);
+function quickPayout(key,rows){
+  const cfg=STORES[key];
+  if(cfg.type==='farmaid'){const r=processFarmAid(rows);return money(r.netSales)+' net sales';}
+  if(cfg.type==='moby_grape'){const r=processMobyGrape(rows);const cd=Object.values(r.cdByRecipient).reduce((s,d)=>s+d.payout,0);return money(cd+r.merchTotal.payout)+' total';}
+  if(cfg.type==='dgm'){const r=processDGM(rows);const t=Object.values(r.orgTotals).reduce((s,d)=>s+d.payout,0);return money(t)+' across orgs';}
+  if(cfg.type==='khan'){const r=processPct(rows,cfg);return money(r.donations)+' donations';}
+  if(cfg.type==='pct'){const r=processPct(rows,cfg);return money(r.payout)+' payout';}
+  if(cfg.type==='fixed_store'){const r=processFixed(rows,cfg);return money(r.total)+' payout';}
+  return '';
+}
+
+// ═══ NAVIGATION ═══════════════════════════════════════════════════════════════
+function goScreen(n){
+  if(n===2&&!document.getElementById('preparer').value.trim()){alert('Please enter your name first.');return;}
+  document.getElementById('screen1').classList.toggle('hidden',n!==1);
+  document.getElementById('screen2').classList.toggle('hidden',n!==2);
+  document.getElementById('screen3').classList.toggle('hidden',n!==3);
+  document.getElementById('stp1').className='step'+(n===1?' active':n>1?' done':'');
+  document.getElementById('stp2').className='step'+(n===2?' active':n>2?' done':'');
+  document.getElementById('stp3').className='step'+(n===3?' active':'');
+  if(n===2)renderSlots();
+  if(n===3)renderReview();
+}
+
+// ═══ REVIEW ═══════════════════════════════════════════════════════════════════
+let COMPILED=null;
+function compileResults(){
+  const out={stores:[],payments:[],warnings:[]};
+  for(const key of activeSlotKeys()){
+    const sd=slotData[key];if(!sd)continue;
+    const cfg=STORES[key],rows=sd.rows;
+    if(cfg.type==='farmaid'){
+      const r=processFarmAid(rows);
+      out.stores.push({key,label:'Farm Aid',type:'farmaid',payout:0,fee:0,note:'Sales summary only (no payout)',result:r});
+    }else if(cfg.type==='moby_grape'){
+      const r=processMobyGrape(rows);const perPerson=r.merchTotal.payout/5;let cdTotal=0;
+      Object.entries(r.cdByRecipient).forEach(([rec,d])=>{cdTotal+=d.payout;
+        out.payments.push({store:'Moby Grape',recipient:rec,method:'Check',amount:d.payout,note:rec==='Jan Lewis'?'690 Grape Ave, Sunnyvale CA 94087':'CD sales'});});
+      MG_MERCH_MEMBERS.forEach(m=>out.payments.push({store:'Moby Grape',recipient:m,method:'Check',amount:perPerson,note:'1/5 merch split'}));
+      out.stores.push({key,label:'Moby Grape',type:'moby_grape',payout:cdTotal+r.merchTotal.payout,fee:0,result:r});
+      if(r.unknowns.length)out.warnings.push(`Moby Grape: ${r.unknowns.length} row(s) need review`);
+    }else if(cfg.type==='dgm'){
+      const r=processDGM(rows);let dgmTotal=0;
+      Object.entries(r.orgTotals).sort((a,b)=>b[1].payout-a[1].payout).forEach(([org,d])=>{
+        if(d.payout<=0)return;dgmTotal+=d.payout;const pay=DGM_PAY[org];
+        out.payments.push({store:'DGM — '+org,recipient:pay?pay.payable:'—',method:pay?pay.method:'—',amount:d.payout,note:d.inactive?'⚠️ ARCHIVED org — verify before paying':(pay?'':'No payment info on file')});
+      });
+      out.stores.push({key,label:'Doing Good Merch',type:'dgm',payout:dgmTotal,fee:0,result:r});
+      if(r.unknowns.length)out.warnings.push(`DGM: ${r.unknowns.length} row(s) need review`);
+      const aa=Object.entries(r.orgTotals).filter(([o,d])=>d.inactive&&d.payout>0).map(([o])=>o);
+      if(aa.length)out.warnings.push(`DGM archived org(s) with sales: ${aa.join(', ')}`);
+    }else if(cfg.type==='khan'){
+      const r=processPct(rows,cfg);const pay=PAY.khan;
+      out.stores.push({key,label:cfg.label,type:'khan',payout:r.donations,fee:0,result:r});
+      if(r.donations>0)out.payments.push({store:cfg.label,recipient:pay.payable,method:pay.method,amount:r.donations,note:'Donations'});
+    }else if(cfg.type==='pct'){
+      const r=processPct(rows,cfg);const fee=cfg.monthlyFee?cfg.monthlyFee*MONTHS():0;const pay=PAY[key];
+      out.stores.push({key,label:cfg.label,type:'pct',payout:r.payout,fee,result:r});
+      if(r.payout>0)out.payments.push({store:cfg.label,recipient:pay.payable,method:pay.method,amount:r.payout,note:''});
+    }else if(cfg.type==='fixed_store'){
+      const r=processFixed(rows,cfg);const fee=cfg.monthlyFee?cfg.monthlyFee*MONTHS():0;const pay=PAY[key];
+      out.stores.push({key,label:cfg.label,type:'fixed_store',payout:r.total,fee,result:r});
+      if(r.total>0)out.payments.push({store:cfg.label,recipient:pay.payable,method:pay.method,amount:r.total,note:''});
+      if(r.unknowns.length)out.warnings.push(`${cfg.label}: ${r.unknowns.length} product(s) had no matching rule`);
+    }
   }
-  btn.disabled=false;
+  return out;
+}
+
+function renderReview(){
+  COMPILED=compileResults();
+  const area=document.getElementById('reviewArea');
+  if(!COMPILED.stores.length){area.innerHTML='<p style="color:#991b1b">No reports uploaded. Go back and add at least one store.</p>';return;}
+  let html=`<p style="font-size:.85rem;color:#666;margin-bottom:12px">Period: <strong>${periodLabel()}</strong> · Prepared by <strong>${document.getElementById('preparer').value}</strong></p>`;
+  html+=`<table><tr><th>Store</th><th class="rt">Payout</th><th class="rt">Platform Fee (bill separately)</th><th>Notes</th></tr>`;
+  let grand=0,grandFee=0;
+  COMPILED.stores.forEach(s=>{grand+=s.payout;grandFee+=(s.fee||0);
+    html+=`<tr><td>${s.label}</td><td class="rt mono">${s.type==='farmaid'?'—':money(s.payout)}</td><td class="rt mono">${s.fee?money(s.fee):'—'}</td><td style="color:#666;font-size:.8rem">${s.note||''}</td></tr>`;});
+  html+=`<tr><td><strong>TOTALS</strong></td><td class="rt mono"><strong>${money(grand)}</strong></td><td class="rt mono"><strong>${grandFee?money(grandFee):'—'}</strong></td><td></td></tr></table>`;
+  html+=`<p class="hint" style="margin-top:8px">Platform fees are billed separately and are not deducted from payouts.</p>`;
+  if(COMPILED.warnings.length){html+=`<div class="warn-box">⚠️ <strong>Review before generating:</strong><ul>${COMPILED.warnings.map(w=>`<li>${w}</li>`).join('')}</ul></div>`;}
+  area.innerHTML=html;
+}
+
+// ═══ GENERATE OUTPUTS ═════════════════════════════════════════════════════════
+let _doneIdx=0;
+function toggleDone(id){const el=document.getElementById(id);if(el)el.classList.toggle('done');}
+function generateAll(){
+  if(!COMPILED)COMPILED=compileResults();
+  const area=document.getElementById('outputArea');
+  _doneIdx=0;
+  let html='';
+  html+=`<div class="card"><h2>📁 Downloads</h2>
+    <div class="btnrow">
+      <button class="btn btn-p" onclick="downloadMaster()">⬇️ Master Workbook (all stores)</button>
+      <button class="btn btn-g" onclick="downloadIndividual()">⬇️ Individual Store Files</button>
+      <button class="btn btn-g" onclick="downloadPayments()">⬇️ Payment To-Do List</button>
+    </div></div>`;
+  // Payment to-do with checkboxes
+  html+=`<div class="card"><h2>💰 Payment To-Do List</h2><p class="hint" style="margin-bottom:10px">Check off each payment as you send it (resets if you reload).</p>`;
+  const section=(title,badge,arr)=>{
+    if(!arr.length)return '';
+    let h=`<h3 style="font-size:.9rem;margin:12px 0 6px"><span class="badge ${badge}">${title}</span></h3>
+      <table><tr><th style="width:34px"></th><th>Store / Org</th><th>Payable To</th><th class="rt">Amount</th><th>Note</th></tr>`;
+    arr.forEach(p=>{const id='pay'+(_doneIdx++);
+      h+=`<tr id="${id}"><td><input type="checkbox" class="chk" onchange="toggleDone('${id}')"></td><td>${p.store}</td><td>${p.recipient}</td><td class="rt mono">${money(p.amount)}</td><td style="color:#666;font-size:.8rem">${p.note||''}</td></tr>`;});
+    h+=`</table>`;return h;
+  };
+  html+=section('CHECK','check',COMPILED.payments.filter(p=>p.method==='Check'));
+  html+=section('PAYPAL','paypal',COMPILED.payments.filter(p=>p.method==='PayPal'));
+  const other=COMPILED.payments.filter(p=>p.method!=='Check'&&p.method!=='PayPal');
+  if(other.length)html+=section('OTHER / NEEDS METHOD','inactive',other);
+  html+=`</div>`;
+  // Email templates with checkboxes
+  html+=`<div class="card"><h2>✉️ Email Templates</h2><p class="hint" style="margin-bottom:12px">Copy each into your email client and attach that store's individual report. Check off when sent.</p>`;
+  COMPILED.stores.forEach((s,i)=>{
+    if(s.type==='farmaid')return;
+    if(s.type==='dgm'){
+      Object.entries(s.result.orgTotals).filter(([o,d])=>d.payout>0).forEach(([org,d])=>{html+=emailBlock('dgm-'+i+'-'+org,org,d.payout,DGM_PAY[org]);});
+    }else if(s.type==='moby_grape'){
+      html+=emailBlock('mg-'+i,'Moby Grape',s.payout,{method:'Check',payable:'individual recipients (see payment list)'});
+    }else{
+      html+=emailBlock('s-'+i,s.label,s.payout,PAY[s.key]);
+    }
+  });
+  html+=`</div>`;
+  area.innerHTML=html;
+  area.scrollIntoView({behavior:'smooth'});
+}
+
+function emailBlock(id,name,amount,pay){
+  const period=periodLabel(),who=document.getElementById('preparer').value;
+  const method=pay?pay.method:'—',payable=pay?pay.payable:'—';
+  const body=`Subject: ${name} — Payout Report for ${period}
+
+Hi ${name},
+
+Please find attached your payout report for ${period}. Your total payout for this period is ${money(amount)}, to be sent via ${method}${method==='Check'?` (payable to ${payable})`:` (${payable})`}.
+
+Let me know if you have any questions about the report.
+
+Best,
+${who}
+Mirror Image`;
+  const rowId='em'+(_doneIdx++);
+  return `<div class="email-block" id="${rowId}"><h4><input type="checkbox" class="chk" onchange="toggleDone('${rowId}')">${name} — ${money(amount)} · <span class="badge ${method.toLowerCase()}">${method}</span></h4>
+    <textarea id="email-${id}">${body}</textarea>
+    <button class="btn btn-g copybtn" onclick="copyEmail('email-${id}')">📋 Copy</button></div>`;
+}
+function copyEmail(id){const ta=document.getElementById(id);ta.select();document.execCommand('copy');}
+
+// ═══ EXCEL BUILDERS ═══════════════════════════════════════════════════════════
+function addStoreSheet(wb,s){
+  const cfg=STORES[s.key];const fee=(cfg.monthlyFee?cfg.monthlyFee*MONTHS():0);
+  let rows=[];
+  if(s.type==='farmaid'){
+    const r=s.result;
+    rows=[["Farm Aid Sales Summary",periodLabel()],[""],["Metric","Value"],
+      ["Total Net Sales",r.netSales],["Total Orders",r.totalOrders],["Avg Order Value",Number(r.avgOrderValue.toFixed(2))],
+      [""],["Top 5 Products","Net Sales"]];
+    r.top5.forEach((p,i)=>rows.push([`${i+1}. ${p.title}`,p.netSales]));
+  }else if(s.type==='moby_grape'){
+    const r=s.result,perPerson=r.merchTotal.payout/5;
+    rows=[["Moby Grape Payout",periodLabel()],[""],["Recipient","Items","Payout"]];
+    Object.entries(r.cdByRecipient).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([rec,d])=>rows.push([rec,d.items,d.payout]));
+    rows.push([""],["Merch Pool (5-way)",r.merchTotal.items,r.merchTotal.payout]);
+    MG_MERCH_MEMBERS.forEach(m=>rows.push(["  → "+m,"",perPerson]));
+    rows.push([""],["TOTAL PAYOUT","",s.payout],[""],["Detail"],["Category","Recipient","Product","Variant","Qty","Net Sales","Per Item","Payout"]);
+    r.details.forEach(d=>rows.push([d.category,d.recipient,d.title,d.variant||"",d.qty,d.netSales,d.perItem,d.payout]));
+  }else if(s.type==='dgm'){
+    const r=s.result;rows=[["Doing Good Merch Payout",periodLabel()],[""],["Organization","Items","Payout","Method","Payable To","Status"]];
+    Object.entries(r.orgTotals).sort((a,b)=>b[1].payout-a[1].payout).forEach(([org,d])=>{
+      const pay=DGM_PAY[org];rows.push([org,d.items,d.payout,pay?pay.method:'',pay?pay.payable:'',d.inactive?'ARCHIVED':'']);});
+    rows.push([""],["Detail"],["Organization","Product","Variant","Qty","Net Sales","Per Item","Payout","Rule"]);
+    r.details.forEach(d=>{const pi=d.qty>0?d.payout/d.qty:0;rows.push([d.org,d.title,d.variant,d.qty,d.netSales,pi,d.payout,d.rule]);});
+  }else if(s.type==='khan'){
+    const r=s.result;rows=[[cfg.label+" Payout",periodLabel()],[""],["Item","Amount"],["Total Donations",r.donations],["PAYOUT",r.donations],
+      [""],["Detail"],["Product","Qty","Net Sales","Note"]];
+    r.details.slice().sort((a,b)=>a.title.localeCompare(b.title)).forEach(d=>rows.push([d.title,d.qty,d.netSales,d.note]));
+  }else if(s.type==='pct'){
+    const r=s.result;rows=[[cfg.label+" Payout",periodLabel()],[""],["Item","Amount"],
+      ["Eligible Net Sales",r.eligible],[`Payout (${cfg.pct*100}%)`,r.eligible*cfg.pct]];
+    if(cfg.includeDonations)rows.push(["Donations (100%)",r.donations]);
+    rows.push(["Excluded (discounts)",r.excluded],["PAYOUT",s.payout]);
+    if(fee)rows.push(["Platform Fee (bill separately)",fee]);
+    rows.push([""],["Detail"],["Product","Qty","Net Sales","Note"]);
+    r.details.slice().sort((a,b)=>a.title.localeCompare(b.title)).forEach(d=>rows.push([d.title,d.qty,d.netSales,d.note]));
+  }else if(s.type==='fixed_store'){
+    const r=s.result;rows=[[cfg.label+" Payout",periodLabel()],[""],["Item","Amount"],["PAYOUT",r.total]];
+    if(fee)rows.push(["Platform Fee (bill separately)",fee]);
+    if(cfg.recipient)rows.push([""],["Payable To",cfg.recipient]);
+    rows.push([""],["Detail"],["Product","Qty","Net Sales","Per Item","Payout","Rule/Note"]);
+    r.details.slice().sort((a,b)=>a.title.localeCompare(b.title)).forEach(d=>rows.push([d.title,d.qty,d.netSales,d.perItem||0,d.payout||0,d.note]));
+  }
+  const ws=XLSX.utils.aoa_to_sheet(rows);ws["!cols"]=[{wch:44},{wch:14},{wch:14},{wch:14},{wch:30},{wch:14},{wch:12},{wch:30}];
+  XLSX.utils.book_append_sheet(wb,ws,s.label.replace(/[^\w ]/g,'').slice(0,28)||s.key);
+}
+
+function downloadMaster(){
+  const wb=XLSX.utils.book_new();
+  const cover=[["Mirror Image — Payout Report"],["Period",periodLabel()],["Prepared by",document.getElementById('preparer').value],[""],
+    ["Store","Payout","Platform Fee (bill separately)"]];
+  let grand=0,grandFee=0;
+  COMPILED.stores.forEach(s=>{cover.push([s.label,s.type==='farmaid'?'(sales only)':s.payout,s.fee||""]);if(s.type!=='farmaid')grand+=s.payout;grandFee+=(s.fee||0);});
+  cover.push(["TOTALS",grand,grandFee]);
+  cover.push([""],["Note","Platform fees are billed separately and are not deducted from payouts."]);
+  const cws=XLSX.utils.aoa_to_sheet(cover);cws["!cols"]=[{wch:40},{wch:16},{wch:28}];
+  XLSX.utils.book_append_sheet(wb,cws,"Summary");
+  COMPILED.stores.forEach(s=>addStoreSheet(wb,s));
+  XLSX.writeFile(wb,`Payout_Master_${periodLabel().replace(/\s+/g,'_')}.xlsx`);
+}
+function downloadIndividual(){
+  COMPILED.stores.forEach((s,i)=>{
+    setTimeout(()=>{const wb=XLSX.utils.book_new();addStoreSheet(wb,s);XLSX.writeFile(wb,`${s.label.replace(/[^\w]+/g,'_')}_${periodLabel().replace(/\s+/g,'_')}.xlsx`);},i*400);
+  });
+}
+function downloadPayments(){
+  const wb=XLSX.utils.book_new();
+  const rows=[["Payment To-Do List",periodLabel()],["Prepared by",document.getElementById('preparer').value],["Note","Amounts are full payouts. Platform fees are billed separately."],[""],
+    ["Method","Store / Org","Payable To","Amount","Note"]];
+  ['Check','PayPal'].forEach(meth=>{
+    COMPILED.payments.filter(p=>p.method===meth).forEach(p=>rows.push([meth,p.store,p.recipient,p.amount,p.note||""]));
+  });
+  COMPILED.payments.filter(p=>p.method!=='Check'&&p.method!=='PayPal').forEach(p=>rows.push([p.method,p.store,p.recipient,p.amount,p.note||""]));
+  const total=COMPILED.payments.reduce((s,p)=>s+p.amount,0);
+  rows.push([""],["","","TOTAL",total,""]);
+  const ws=XLSX.utils.aoa_to_sheet(rows);ws["!cols"]=[{wch:10},{wch:40},{wch:34},{wch:14},{wch:34}];
+  XLSX.utils.book_append_sheet(wb,ws,"Payments");
+  XLSX.writeFile(wb,`Payment_ToDo_${periodLabel().replace(/\s+/g,'_')}.xlsx`);
 }
 </script>
 </body>
