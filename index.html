@@ -478,29 +478,92 @@ const ARCHIVED_STORES=new Set(['toscani']); // standalone stores no longer proce
 function activeSlotKeys(){ return periodType==='quarter'?QUARTERLY_KEYS:MONTHLY_KEYS; }
 const slotData={}; // key -> {rows, fileName}
 
+// Farm Aid monthly extras
+let faShipWebRows=null, faShipManualRows=null, _faShipWebName='', _faShipManualName='', _faSessions='', _faConv='';
+
+function processShipStation(rows){
+  let shipments=0,items=0,paid=0,cost=0,insurance=0;
+  for(const raw of rows){
+    const row=norm(raw);
+    const hasData=gf(row,'shipping cost')!==''||gf(row,'shipping paid')!==''||gf(row,'order #')!=='';
+    if(!hasData)continue;
+    shipments++;
+    items+=pn(gf(row,'items'));
+    paid+=pn(gf(row,'shipping paid'));
+    cost+=pn(gf(row,'shipping cost'));
+    insurance+=pn(gf(row,'insurance cost'));
+  }
+  return{shipments,items,paid,cost,insurance,net:paid-cost};
+}
+
+async function handleShipFile(which,file){
+  if(!file)return;
+  const st=document.getElementById('stat-'+(which==='web'?'shipweb':'shipmanual'));
+  st.innerHTML='⏳ Reading…';
+  try{
+    const rows=await parseCSV(file);const r=processShipStation(rows);
+    if(which==='web'){faShipWebRows=rows;_faShipWebName=file.name;}
+    else{faShipManualRows=rows;_faShipManualName=file.name;}
+    st.innerHTML=`<span class="stat ok">✅ ${file.name} — ${r.shipments} shipments · cost ${money(r.cost+r.insurance)}</span>`;
+  }catch(e){st.innerHTML=`<span class="stat err">❌ ${e.message}</span>`;}
+}
+function setupShipDrop(elId,which){
+  const drop=document.getElementById('drop-'+elId),inp=document.getElementById('inp-'+elId);
+  drop.addEventListener('click',()=>inp.click());
+  inp.addEventListener('change',e=>handleShipFile(which,e.target.files[0]));
+  drop.addEventListener('dragover',e=>{e.preventDefault();drop.classList.add('drag');});
+  drop.addEventListener('dragleave',()=>drop.classList.remove('drag'));
+  drop.addEventListener('drop',e=>{e.preventDefault();drop.classList.remove('drag');handleShipFile(which,e.dataTransfer.files[0]);});
+}
+
 function renderSlots(){
   const keys=activeSlotKeys();
   Object.keys(slotData).forEach(k=>{if(!keys.includes(k))delete slotData[k];});
+  const monthly=periodType==='month';
   const wrap=document.getElementById('slotList');
-  wrap.innerHTML=`
+  const sortHTML=monthly?'':`
     <div class="sortbox" id="sortBox">
       <input type="file" id="sortInput" accept=".csv" multiple>
       <strong>⬇️ Drop all your CSVs here to auto-sort</strong>
       <div class="hint" style="margin-top:4px">The tool detects each store and routes it to the right slot below — or use the individual slots.</div>
     </div>
-    <div class="sortlog" id="sortLog"></div>
-  `+keys.map(k=>`
+    <div class="sortlog" id="sortLog"></div>`;
+  const slotsHTML=keys.map(k=>`
     <div class="slot">
       <div class="nm">${SLOT_LABELS[k]}</div>
       <div class="up"><div class="drop" id="drop-${k}"><input type="file" id="inp-${k}" accept=".csv"><span>Click or drag CSV</span></div></div>
       <div class="stat" id="stat-${k}"></div>
     </div>`).join('');
-  const sb=document.getElementById('sortBox'),si=document.getElementById('sortInput');
-  sb.addEventListener('click',()=>si.click());
-  si.addEventListener('change',e=>handleMultiFiles(e.target.files));
-  sb.addEventListener('dragover',e=>{e.preventDefault();sb.classList.add('drag');});
-  sb.addEventListener('dragleave',()=>sb.classList.remove('drag'));
-  sb.addEventListener('drop',e=>{e.preventDefault();sb.classList.remove('drag');handleMultiFiles(e.dataTransfer.files);});
+  const monthlyExtra=monthly?`
+    <div style="margin-top:14px;padding:16px;border:1px solid #e5e7eb;border-radius:10px">
+      <h2 style="font-size:.95rem;margin-bottom:12px">Farm Aid — Additional Monthly Data</h2>
+      <div class="row2">
+        <label class="fld">Online Store Sessions<input id="fa-sessions" type="number" placeholder="e.g. 49020"></label>
+        <label class="fld">Conversion Rate (%)<input id="fa-conversion" type="number" step="0.01" placeholder="e.g. 0.09"></label>
+      </div>
+      <p style="font-size:.85rem;font-weight:600;color:#444;margin:6px 0 10px">📦 Shipping cost reports (ShipStation)</p>
+      <div class="row2">
+        <div>
+          <div style="font-size:.85rem;font-weight:600;margin-bottom:5px">Web Store Orders</div>
+          <div class="drop" id="drop-shipweb"><input type="file" id="inp-shipweb" accept=".csv"><span>Click or drag CSV</span></div>
+          <div class="stat" id="stat-shipweb"></div>
+        </div>
+        <div>
+          <div style="font-size:.85rem;font-weight:600;margin-bottom:5px">Manually Shipped Orders</div>
+          <div class="drop" id="drop-shipmanual"><input type="file" id="inp-shipmanual" accept=".csv"><span>Click or drag CSV</span></div>
+          <div class="stat" id="stat-shipmanual"></div>
+        </div>
+      </div>
+    </div>`:'';
+  wrap.innerHTML=sortHTML+slotsHTML+monthlyExtra;
+  if(!monthly){
+    const sb=document.getElementById('sortBox'),si=document.getElementById('sortInput');
+    sb.addEventListener('click',()=>si.click());
+    si.addEventListener('change',e=>handleMultiFiles(e.target.files));
+    sb.addEventListener('dragover',e=>{e.preventDefault();sb.classList.add('drag');});
+    sb.addEventListener('dragleave',()=>sb.classList.remove('drag'));
+    sb.addEventListener('drop',e=>{e.preventDefault();sb.classList.remove('drag');handleMultiFiles(e.dataTransfer.files);});
+  }
   keys.forEach(k=>{
     const drop=document.getElementById('drop-'+k),inp=document.getElementById('inp-'+k);
     drop.addEventListener('click',()=>inp.click());
@@ -510,6 +573,16 @@ function renderSlots(){
     drop.addEventListener('drop',e=>{e.preventDefault();drop.classList.remove('drag');handleSlotFile(k,e.dataTransfer.files[0]);});
     if(slotData[k]){const st=document.getElementById('stat-'+k);st.className='stat ok';st.innerHTML=`✅ ${slotData[k].fileName}<br><span class="mono">${quickPayout(k,slotData[k].rows)}</span>`;}
   });
+  if(monthly){
+    setupShipDrop('shipweb','web');
+    setupShipDrop('shipmanual','manual');
+    const se=document.getElementById('fa-sessions'),ce=document.getElementById('fa-conversion');
+    se.value=_faSessions;ce.value=_faConv;
+    se.addEventListener('input',e=>_faSessions=e.target.value);
+    ce.addEventListener('input',e=>_faConv=e.target.value);
+    if(faShipWebRows)document.getElementById('stat-shipweb').innerHTML=`<span class="stat ok">✅ ${_faShipWebName} — ${processShipStation(faShipWebRows).shipments} shipments</span>`;
+    if(faShipManualRows)document.getElementById('stat-shipmanual').innerHTML=`<span class="stat ok">✅ ${_faShipManualName} — ${processShipStation(faShipManualRows).shipments} shipments</span>`;
+  }
 }
 
 async function handleMultiFiles(files){
@@ -586,7 +659,9 @@ function compileResults(){
     const cfg=STORES[key],rows=sd.rows;
     if(cfg.type==='farmaid'){
       const r=processFarmAid(rows);
-      out.stores.push({key,label:'Farm Aid',type:'farmaid',payout:0,fee:0,note:'Sales summary only (no payout)',result:r});
+      const shipWeb=faShipWebRows?processShipStation(faShipWebRows):null;
+      const shipManual=faShipManualRows?processShipStation(faShipManualRows):null;
+      out.stores.push({key,label:'Farm Aid',type:'farmaid',payout:0,fee:0,note:'Monthly sales + shipping summary',result:r,sessions:_faSessions||null,convRate:_faConv||null,shipWeb,shipManual});
     }else if(cfg.type==='moby_grape'){
       const r=processMobyGrape(rows);const perPerson=r.merchTotal.payout/5;let cdTotal=0;
       Object.entries(r.cdByRecipient).forEach(([rec,d])=>{cdTotal+=d.payout;
@@ -644,6 +719,7 @@ function generateAll(){
   if(!COMPILED)COMPILED=compileResults();
   const area=document.getElementById('outputArea');
   _doneIdx=0;
+  if(periodType==='month'){ area.innerHTML=farmAidMonthlyHTML(); area.scrollIntoView({behavior:'smooth'}); return; }
   let html='';
   html+=`<div class="card"><h2>📁 Downloads</h2>
     <div class="btnrow">
@@ -782,6 +858,64 @@ function downloadPayments(){
   const ws=XLSX.utils.aoa_to_sheet(rows);ws["!cols"]=[{wch:10},{wch:40},{wch:34},{wch:14},{wch:34}];
   XLSX.utils.book_append_sheet(wb,ws,"Payments");
   XLSX.writeFile(wb,`Payment_ToDo_${periodLabel().replace(/\s+/g,'_')}.xlsx`);
+}
+
+// ═══ FARM AID MONTHLY ═════════════════════════════════════════════════════════
+function farmAidMonthlyHTML(){
+  const s=COMPILED.stores.find(x=>x.type==='farmaid');
+  if(!s)return '<div class="card">No Farm Aid sales file uploaded. Go back and add it.</div>';
+  const r=s.result,sw=s.shipWeb,sm=s.shipManual;
+  let html=`<div class="card"><h2>📁 Download</h2><div class="btnrow">
+    <button class="btn btn-p" onclick="downloadFarmAid()">⬇️ Farm Aid Monthly Report (Excel)</button></div>
+    <p class="hint" style="margin-top:8px">All values below are copy-ready for your Google Sheet.</p></div>`;
+  html+=`<div class="card"><h2>📊 Monthly Metrics — ${periodLabel()}</h2><table>
+    <tr><th>Metric</th><th class="rt">Value</th></tr>
+    <tr><td>Total Monthly Net Sales</td><td class="rt mono">${money(r.netSales)}</td></tr>
+    <tr><td>Online Store Sessions</td><td class="rt mono">${s.sessions?Number(s.sessions).toLocaleString():'—'}</td></tr>
+    <tr><td>Conversion Rate</td><td class="rt mono">${s.convRate?s.convRate+'%':'—'}</td></tr>
+    <tr><td>Total No. of Orders</td><td class="rt mono">${r.totalOrders}</td></tr>
+    <tr><td>Avg Order Value</td><td class="rt mono">${money(r.avgOrderValue)}</td></tr>
+  </table></div>`;
+  html+=`<div class="card"><h2>🏆 Top 5 Products by Revenue</h2><table><tr><th>#</th><th>Product</th><th class="rt">Net Sales</th></tr>`;
+  r.top5.forEach((p,i)=>html+=`<tr><td>${i+1}</td><td>${p.title}</td><td class="rt mono">${money(p.netSales)}</td></tr>`);
+  html+=`</table></div>`;
+  html+=`<div class="card"><h2>📦 Shipping Summary</h2>`;
+  if(!sw&&!sm){html+=`<p class="hint">No ShipStation files uploaded — shipping section skipped.</p>`;}
+  else{
+    html+=`<table><tr><th></th><th class="rt">Shipments</th><th class="rt">Items</th><th class="rt">Customer Paid</th><th class="rt">Actual Cost</th><th class="rt">Insurance</th><th class="rt">Net (Paid−Cost)</th></tr>`;
+    if(sw)html+=`<tr><td>Web Store Orders</td><td class="rt mono">${sw.shipments}</td><td class="rt mono">${sw.items}</td><td class="rt mono">${money(sw.paid)}</td><td class="rt mono">${money(sw.cost)}</td><td class="rt mono">${money(sw.insurance)}</td><td class="rt mono">${money(sw.net)}</td></tr>`;
+    if(sm)html+=`<tr><td>Manual Orders</td><td class="rt mono">${sm.shipments}</td><td class="rt mono">${sm.items}</td><td class="rt mono">—</td><td class="rt mono">${money(sm.cost)}</td><td class="rt mono">${money(sm.insurance)}</td><td class="rt mono">—</td></tr>`;
+    const totalBillable=(sw?sw.cost+sw.insurance:0)+(sm?sm.cost+sm.insurance:0);
+    html+=`<tr><td><strong>TOTAL BILLABLE (reimbursement)</strong></td><td></td><td></td><td></td><td class="rt mono"><strong>${money(totalBillable)}</strong></td><td></td><td></td></tr></table>`;
+    if(sw){const over=sw.net>=0;html+=`<p class="hint" style="margin-top:8px">Web store: Farm Aid ${over?'collected '+money(sw.net)+' MORE from customers than shipping cost (surplus)':'spent '+money(-sw.net)+' MORE than collected (shortfall)'}. Manual orders have no customer-paid amount, so they're totaled separately.</p>`;}
+  }
+  html+=`</div>`;
+  return html;
+}
+
+function downloadFarmAid(){
+  const s=COMPILED.stores.find(x=>x.type==='farmaid');if(!s)return;
+  const r=s.result,sw=s.shipWeb,sm=s.shipManual,wb=XLSX.utils.book_new();
+  const m=[["Farm Aid Monthly Report",periodLabel()],[""],["Metric","Value"],
+    ["Total Monthly Net Sales",r.netSales],
+    ["Online Store Sessions",s.sessions?Number(s.sessions):"—"],
+    ["Conversion Rate",s.convRate?s.convRate+"%":"—"],
+    ["Total No. of Orders",r.totalOrders],
+    ["Avg Order Value",Number(r.avgOrderValue.toFixed(2))],
+    [""],["Top 5 Products","Net Sales"]];
+  r.top5.forEach((p,i)=>m.push([`${i+1}. ${p.title}`,p.netSales]));
+  const ws=XLSX.utils.aoa_to_sheet(m);ws["!cols"]=[{wch:42},{wch:18}];
+  XLSX.utils.book_append_sheet(wb,ws,"Monthly Summary");
+  if(sw||sm){
+    const totalBillable=(sw?sw.cost+sw.insurance:0)+(sm?sm.cost+sm.insurance:0);
+    const sh=[["Farm Aid Shipping",periodLabel()],[""],["","Shipments","Items","Customer Paid","Actual Cost","Insurance","Net (Paid-Cost)"]];
+    if(sw)sh.push(["Web Store Orders",sw.shipments,sw.items,sw.paid,sw.cost,sw.insurance,sw.net]);
+    if(sm)sh.push(["Manual Orders",sm.shipments,sm.items,"",sm.cost,sm.insurance,""]);
+    sh.push([""],["TOTAL BILLABLE (reimbursement)","","","",totalBillable,"",""]);
+    const ws2=XLSX.utils.aoa_to_sheet(sh);ws2["!cols"]=[{wch:30},{wch:12},{wch:8},{wch:14},{wch:14},{wch:12},{wch:16}];
+    XLSX.utils.book_append_sheet(wb,ws2,"Shipping");
+  }
+  XLSX.writeFile(wb,`FarmAid_${periodLabel().replace(/\s+/g,'_')}.xlsx`);
 }
 </script>
 </body>
